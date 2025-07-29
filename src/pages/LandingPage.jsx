@@ -7,51 +7,48 @@ export default function LandingPage() {
     setTimeout(() => setShow(true), 100);
   }, []);
   return (
-    <div className="w-screen h-screen bg-gray-900 text-white flex flex-col items-center justify-center px-4 overflow-hidden relative">
+    <div className="w-screen min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-3 sm:p-6 pt-[10vh] overflow-x-hidden relative">
       {/* Animated background gradient */}
       <div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-60">
         {/* Floating orbs */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
-        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
+        <div className="absolute top-1/4 left-1/4 w-20 h-20 sm:w-32 sm:h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 sm:w-40 sm:h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
+        <div className="absolute top-1/2 left-1/2 w-16 h-16 sm:w-24 sm:h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
       </div>
-      <div className={`text-center max-w-2xl mx-auto transition-all duration-1000 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}` }>
-        <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+      <div className={`text-center max-w-full sm:max-w-2xl mx-auto transition-all duration-1000 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}` }>
+        <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
           <span className="block relative animate-fade-in group">
             <span className="relative inline-block bg-gradient-to-r from-white via-purple-100 to-white bg-clip-text text-transparent animate-text-shimmer">
               Generate Microsoft Forms
             </span>
-            <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 group-hover:w-full transition-all duration-700 ease-in-out opacity-70"></span>
-            <span className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-pink-500/10 to-red-500/0 blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700"></span>
+            {/* Removed hover underline and blur effect */}
           </span>
-          <span className="block text-5xl md:text-7xl relative group">
-            <span className="relative inline-block bg-gradient-to-r from-purple-600 via-pink-700 to-red-500 bg-clip-text text-transparent animate-slide-in animate-pulse-glow">
+          <span className="block text-3xl xs:text-4xl sm:text-5xl md:text-7xl relative group mt-2 sm:mt-4 leading-[1.15] overflow-visible">
+            <span className="relative inline-block bg-gradient-to-r from-purple-600 via-pink-700 to-red-500 bg-clip-text text-transparent animate-slide-in animate-pulse-glow leading-[1.15]">
               Instantly
               <span className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-pink-700/30 to-red-500/30 blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-pulse-subtle"></span>
             </span>
             {/* Floating particles */}
-            <span className="absolute -left-4 top-1/2 w-2 h-2 bg-purple-500 rounded-full animate-particle-1"></span>
-            <span className="absolute -right-4 top-1/3 w-2 h-2 bg-pink-500 rounded-full animate-particle-2"></span>
-            <span className="absolute right-1/4 -bottom-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-particle-3"></span>
+            <span className="hidden sm:block absolute -left-4 top-1/2 w-2 h-2 bg-purple-500 rounded-full animate-particle-1"></span>
+            <span className="hidden sm:block absolute -right-4 top-1/3 w-2 h-2 bg-pink-500 rounded-full animate-particle-2"></span>
+            <span className="hidden sm:block absolute right-1/4 -bottom-2 w-1.5 h-1.5 bg-red-500 rounded-full animate-particle-3"></span>
           </span>
         </h1>
-        <p className={`text-2xl text-gray-300 mb-20 transition-all duration-1000 delay-200 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}` }>
+        <p className={`text-base xs:text-lg sm:text-2xl text-gray-300 mb-10 sm:mb-20 transition-all duration-1000 delay-200 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}` }>
           Natural language to fully structured forms – fast, simple, powerful.
         </p>
-        <div className="flex justify-center">
-          <GradientOutlineButton onClick={() => navigate('/chat')}>
-            Try Now →
-          </GradientOutlineButton>
+        <div className="flex justify-center w-full">
+          <GradientOutlineButton onClick={() => navigate('/chat')} />
         </div>
       </div>
-      <div className={`mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full px-4 transition-all duration-1000 delay-300 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}` }>
-          <div className="transform transition-all duration-500 hover:rotate-12">
+      <div className={`mt-8 sm:mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8 max-w-full sm:max-w-5xl w-full px-0 xs:px-2 sm:px-4 transition-all duration-1000 delay-300 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}` }>
+          <div>
             <FeatureCard emoji="⚡" title="Speed" description="Lightning fast form generation" />
           </div>
-          <div className="transform transition-all duration-500 hover:-rotate-12">
+          <div>
             <FeatureCard emoji="🎯" title="Accuracy" description="Smart field suggestions based on context" />
           </div>
-          <div className="transform transition-all duration-500 hover:rotate-12">
+          <div>
             <FeatureCard emoji="📤" title="Export" description="Export to Microsoft Forms and Google Docs" />
           </div>
       </div>
@@ -171,11 +168,11 @@ export default function LandingPage() {
   );
 }
 
-function GradientOutlineButton({ children, onClick }) {
+function GradientOutlineButton({ onClick }) {
   return (
     <button 
       onClick={onClick}
-      className="group relative inline-flex items-center justify-center rounded-xl px-6 py-3 md:px-9 md:py-4 text-lg md:text-xl font-bold text-white transition-all duration-300 focus:outline-none w-auto overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl hover:-translate-y-1 cursor-pointer transform"
+      className="group relative inline-flex items-center justify-center rounded-xl px-4 py-2 xs:px-6 xs:py-3 md:px-9 md:py-4 text-base xs:text-lg md:text-xl font-bold text-white transition-all duration-300 focus:outline-none w-full sm:w-auto overflow-hidden shadow-lg hover:scale-105 hover:shadow-2xl hover:-translate-y-1 cursor-pointer transform"
     >
       {/* Glowing gradient shadow */}
       <span
@@ -183,7 +180,7 @@ function GradientOutlineButton({ children, onClick }) {
         aria-hidden="true"
       ></span>
       {/* Button surface */}
-      <span className="absolute inset-0 rounded-xl bg-[#101122] border-2 border-transparent transition-all duration-300 group-hover:border-pink-500"></span>
+      <span className="absolute inset-0 rounded-xl bg-gray-700 border-2 border-transparent transition-all duration-300 group-hover:border-pink-500"></span>
       {/* Text */}
       <span className="relative z-10 inline-flex items-center transition-transform duration-300 group-hover:scale-110">
         <span className="transform transition-transform duration-300 group-hover:translate-x-1">Try Now</span>
@@ -197,13 +194,13 @@ function GradientOutlineButton({ children, onClick }) {
 
 function FeatureCard({ emoji, title, description }) {
   return (
-    <div className="bg-gray-800 rounded-xl p-4 md:p-6 shadow-md text-center flex flex-col items-center transform transition-all duration-1000 ease-in-out hover:scale-105 hover:bg-gradient-to-br hover:from-purple-800/60 hover:to-red-800/60 relative group aspect-square hover:rounded-full overflow-hidden">
-      {/* Animated border gradient */}
-      <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-xl group-hover:rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-all duration-1000 ease-in-out"></div>
-      <div className="relative bg-gray-800 rounded-xl group-hover:rounded-full p-4 md:p-6 w-full h-full transition-all duration-1000 ease-in-out">
-        <div className="text-3xl md:text-4xl mb-2 md:mb-3 animate-fade-in animate-bounce-slow" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>{emoji}</div>
-        <h3 className="text-xl md:text-2xl font-semibold mb-2 animate-fade-in" style={{ animationDelay: '0.7s', animationFillMode: 'both' }}>{title}</h3>
-        <p className="text-gray-400 text-base md:text-lg animate-fade-in" style={{ animationDelay: '0.9s', animationFillMode: 'both' }}>{description}</p>
+    <div className="bg-gray-800 rounded-xl p-3 xs:p-4 md:p-6 shadow-md text-center flex flex-col items-center transition-all duration-1000 ease-in-out relative aspect-square overflow-hidden w-full max-w-xs mx-auto">
+      {/* Static border gradient (no hover) */}
+      <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 rounded-xl opacity-0 blur-sm transition-all duration-1000 ease-in-out"></div>
+      <div className="relative bg-gray-800 rounded-xl p-3 xs:p-4 md:p-6 w-full h-full transition-all duration-1000 ease-in-out">
+        <div className="text-2xl xs:text-3xl md:text-4xl mb-1 xs:mb-2 md:mb-3 animate-fade-in animate-bounce-slow" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>{emoji}</div>
+        <h3 className="text-lg xs:text-xl md:text-2xl font-semibold mb-1 xs:mb-2 animate-fade-in" style={{ animationDelay: '0.7s', animationFillMode: 'both' }}>{title}</h3>
+        <p className="text-gray-400 text-sm xs:text-base md:text-lg animate-fade-in" style={{ animationDelay: '0.9s', animationFillMode: 'both' }}>{description}</p>
       </div>
     </div>
   );

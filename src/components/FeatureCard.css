@@ -1,0 +1,122 @@
+/* FeatureCard.css - Styles for the feature card component */
+
+.feature-card {
+  background-color: rgb(31 41 55);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all 1s ease-in-out;
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  width: 100%;
+  max-width: 20rem;
+  margin: 0 auto;
+}
+
+@media (min-width: 475px) {
+  .feature-card {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-card {
+    padding: 1.5rem;
+  }
+}
+
+/* Static border gradient (no hover) */
+.feature-card-border {
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(to right, rgb(168, 85, 247), rgb(236, 72, 153), rgb(239, 68, 68));
+  border-radius: 0.75rem;
+  opacity: 0;
+  filter: blur(4px);
+  transition: all 1s ease-in-out;
+}
+
+.feature-card-content {
+  position: relative;
+  background-color: rgb(31 41 55);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  width: 100%;
+  height: 100%;
+  transition: all 1s ease-in-out;
+}
+
+@media (min-width: 475px) {
+  .feature-card-content {
+    padding: 1rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-card-content {
+    padding: 1.5rem;
+  }
+}
+
+.feature-card-emoji {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+  animation: fade-in 1.2s cubic-bezier(0.4, 0, 0.2, 1) both, bounce-slow 3s ease-in-out infinite;
+}
+
+@media (min-width: 475px) {
+  .feature-card-emoji {
+    font-size: 1.875rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-card-emoji {
+    font-size: 2.25rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
+.feature-card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  animation: fade-in 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (min-width: 475px) {
+  .feature-card-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .feature-card-title {
+    font-size: 1.5rem;
+  }
+}
+
+.feature-card-description {
+  color: rgb(156 163 175);
+  font-size: 0.875rem;
+  animation: fade-in 1.2s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@media (min-width: 475px) {
+  .feature-card-description {
+    font-size: 1rem;
+  }
+}
+
+  @media (min-width: 768px) {
+  .feature-card-description {
+    font-size: 1.125rem;
+  }
+} 

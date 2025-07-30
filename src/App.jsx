@@ -7,7 +7,7 @@ import Navbar from "./components/ui/NavBar";
 function App() {
   return (
     <Router>
-      <Navbar />
+      {/* <Navbar /> */}
       <main className="min-h-screen w-full overflow-x-hidden">
         <Routes>
           <Route path="/" element={<LandingPage />} />

@@ -11,7 +11,7 @@ export default function LandingPage() {
     setTimeout(() => setShow(true), 100);
   }, []);
   return (
-    <div className="landing-page-container">
+    <div className="landing-page-container pt-20">
       {/* Animated background gradient */}
       <div className="animated-background">
         {/* Floating orbs */}
@@ -133,6 +133,7 @@ function FeatureCard({ emoji, title, description }) {
         <h3 className="feature-card-title" style={{ animationDelay: '0.7s', animationFillMode: 'both' }}>{title}</h3>
         <p className="feature-card-description" style={{ animationDelay: '0.9s', animationFillMode: 'both' }}>{description}</p>
       </div>
+      <div style={{ height: "200vh", background: "rgba(255,255,255,0.05)" }} />
     </div>
   );
 }

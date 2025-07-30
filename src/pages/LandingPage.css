@@ -4,21 +4,26 @@
 .landing-page-container {
   width: 100vw;
   min-height: 100vh;
+  height: auto;
   background-color: rgb(17 24 39);
   color: white;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* ✅ not center */
   padding: 0.75rem;
-  padding-top: 10vh;
+  padding-top: 130px;
   overflow-x: hidden;
+  overflow-y: auto;
   position: relative;
 }
 
+
 @media (min-width: 640px) {
   .landing-page-container {
-    padding: 1.5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    /* Do NOT set padding-top here, keep it at 80px */
   }
 }
 
@@ -480,4 +485,4 @@
 @keyframes particle-float-3 {
   0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
   50% { transform: translate(8px, -12px) scale(1.15); opacity: 0.8; }
-} 
+}

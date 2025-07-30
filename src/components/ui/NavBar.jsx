@@ -9,7 +9,10 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-white tracking-tight hover:opacity-90 transition">
+          <Link
+            to="/"
+            className="text-2xl font-bold text-white tracking-tight hover:opacity-90 transition"
+          >
             Cursor for<span className="text-purple-400"> Forms</span>
           </Link>
 
@@ -34,7 +37,7 @@ export default function Navbar() {
             <button
               onClick={() => setIsOpen(!isOpen)}
               aria-label="Toggle Menu"
-              className="text-gray-300 p-2 rounded hover:bg-white/10 transition"
+              className="text-gray-300 p-2 rounded transition bg-transparent hover:bg-gray-700/20"
             >
               <svg
                 className="h-6 w-6"
@@ -56,7 +59,7 @@ export default function Navbar() {
 
       {/* Mobile Dropdown Menu */}
       {isOpen && (
-        <div className="md:hidden px-4 pb-4 space-y-1 backdrop-blur-sm bg-[#0e0f1b]/90 border-t border- /10">
+        <div className="md:hidden px-4 pb-4 space-y-1 backdrop-blur-sm bg-[#0e0f1b]/90 border-t border-white/10">
           {['Forms', 'Excel', 'PPT'].map((label) => (
             <Link
               key={label}

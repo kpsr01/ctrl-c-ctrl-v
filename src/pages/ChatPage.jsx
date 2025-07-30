@@ -11,12 +11,14 @@ export default function ChatPage() {
     "Excel Automation",
   ]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-    setMessages([...messages, { type: "user", content: chatInput }]);
-    setChatInput("");
-  };
+const handleSubmit = (e) => {
+  e.preventDefault();
+  const trimmed = chatInput.trim();
+  if (!trimmed) return;
+  setMessages([...messages, { type: "user", content: trimmed }]);
+  setChatInput("");
+};
+
 
   return (
     <div className="h-screen flex bg-gray-900 text-white overflow-hidden">
@@ -51,7 +53,7 @@ export default function ChatPage() {
       {/* Main content wrapper */}
       <div className="flex flex-col flex-1 h-full">
         {/* Chat Content */}
-        <div className="flex-1 overflow-y-auto p-6 relative">
+        <div className="flex-1 overflow-y-auto pt-24 px-6 pb-6 relative">
           <div className="max-w-4xl mx-auto space-y-4">
             {messages.length === 0 ? (
               <div className="text-center text-gray-400 animate-fade-in-up">

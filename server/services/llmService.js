@@ -10,7 +10,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const OPENROUTER_API_URL = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL_NAME = 'qwen/qwen3-coder:free';
+const MODEL_NAME = 'meta-llama/llama-3.3-70b-instruct:free';
 
 if (!OPENROUTER_API_KEY) {
   console.error('⚠️  OPENROUTER_API_KEY not found in environment variables');
@@ -166,7 +166,7 @@ Example output:
  */
 export async function generateFormSchema(prompt, type = 'form') {
   try {
-    console.log(`🤖 Generating ${type} schema with Qwen3 Coder...`);
+    console.log(`🤖 Generating ${type} schema`);
     
     const systemPrompt = getSystemPrompt(type);
     const userPrompt = `Create a ${type} based on this description: ${prompt}

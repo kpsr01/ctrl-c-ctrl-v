@@ -109,3 +109,43 @@
 .animate-scroll-text:hover {
   animation-play-state: paused;
 }
+
+/* Add padding inside form container */
+.rjsf {
+  padding: 1rem;
+}
+
+/* Add space between fields */
+.rjsf .form-group {
+  margin-bottom: 1rem;
+}
+
+/* Style labels */
+.rjsf label {
+  color: #ddd;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* Style input and select fields */
+.rjsf input,
+.rjsf select,
+.rjsf textarea {
+  background-color: #1f2937; /* dark background */
+  color: #f9fafb; /* light text */
+  border: 1px solid #4b5563; /* gray border */
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* On focus, highlight input */
+.rjsf input:focus,
+.rjsf select:focus,
+.rjsf textarea:focus {
+  border-color: #8b5cf6; /* purple */
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+}

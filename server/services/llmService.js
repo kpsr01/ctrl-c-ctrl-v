@@ -52,15 +52,15 @@ For FORMS, create a JSON schema with:
 - "uiSchema": object with UI rendering hints
 - "title": descriptive title for the form
 
-Field types available: string, number, integer, boolean, array, object
+Field types available: string, number, integer, boolean, array, object  
 UI widgets: text, textarea, email, password, number, checkbox, radio, select, date, time, file
 
-Example output for "contact form":
+Example output for "Job Application Form":
 {
   "type": "object",
-  "title": "Contact Form",
+  "title": "Job Application Form",
   "properties": {
-    "name": {
+    "fullName": {
       "type": "string",
       "title": "Full Name",
       "minLength": 2
@@ -70,28 +70,64 @@ Example output for "contact form":
       "title": "Email Address",
       "format": "email"
     },
-    "message": {
+    "phone": {
       "type": "string",
-      "title": "Message",
-      "minLength": 10
+      "title": "Phone Number"
+    },
+    "resume": {
+      "type": "string",
+      "title": "Resume (PDF or DOCX)",
+      "contentMediaType": "application/pdf"
+    },
+    "position": {
+      "type": "string",
+      "title": "Position Applying For",
+      "enum": ["Frontend Developer", "Backend Developer", "UI/UX Designer", "Product Manager"]
+    },
+    "experience": {
+      "type": "number",
+      "title": "Years of Experience",
+      "minimum": 0
+    },
+    "availableStartDate": {
+      "type": "string",
+      "format": "date",
+      "title": "Available Start Date"
+    },
+    "relocate": {
+      "type": "boolean",
+      "title": "Willing to Relocate?"
     }
   },
-  "required": ["name", "email", "message"],
+  "required": ["fullName", "email", "resume", "position"],
   "uiSchema": {
-    "name": {
+    "fullName": {
       "ui:widget": "text",
       "ui:placeholder": "Enter your full name"
     },
     "email": {
       "ui:widget": "email",
-      "ui:placeholder": "Enter your email address"
+      "ui:placeholder": "example@domain.com"
     },
-    "message": {
-      "ui:widget": "textarea",
-      "ui:placeholder": "Enter your message here",
-      "ui:options": {
-        "rows": 4
-      }
+    "phone": {
+      "ui:widget": "text",
+      "ui:placeholder": "+1 555-1234"
+    },
+    "resume": {
+      "ui:widget": "file"
+    },
+    "position": {
+      "ui:widget": "select"
+    },
+    "experience": {
+      "ui:widget": "number",
+      "ui:placeholder": "e.g. 3"
+    },
+    "availableStartDate": {
+      "ui:widget": "date"
+    },
+    "relocate": {
+      "ui:widget": "checkbox"
     }
   }
 }`;

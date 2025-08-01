@@ -392,9 +392,10 @@ export default function ChatPage() {
   const [schema, setSchema] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-const [user, setUser] = useState(null);
-const [accessToken, setAccessToken] = useState(null);
-const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [user, setUser] = useState(null);
+  const [accessToken, setAccessToken] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [selectedType, setSelectedType] = useState('form');
 
 const handleLogin = (token) => {
   setAccessToken(token);

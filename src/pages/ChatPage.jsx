@@ -127,6 +127,109 @@ function convertSchemaToGoogleForm(schema) {
   };
 }
 
+// Sidebar Component
+const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
+  // Placeholder chat history data
+  const chatHistory = [
+    { id: 1, title: "Untitled Form", type: "form", timestamp: "2024-01-15" },
+    { id: 2, title: "Form v2", type: "form", timestamp: "2024-01-14" },
+    { id: 3, title: "Sales Presentation", type: "ppt", timestamp: "2024-01-13" },
+    { id: 4, title: "Budget Spreadsheet", type: "spreadsheet", timestamp: "2024-01-12" },
+    { id: 5, title: "Contact Form", type: "form", timestamp: "2024-01-11" },
+    { id: 6, title: "Q4 Report", type: "ppt", timestamp: "2024-01-10" },
+    { id: 7, title: "Inventory Tracker", type: "spreadsheet", timestamp: "2024-01-09" },
+    { id: 8, title: "Registration Form", type: "form", timestamp: "2024-01-08" },
+  ];
+
+  const typeOptions = [
+    { id: 'form', label: 'Forms', icon: '📋' },
+    { id: 'ppt', label: 'PPT', icon: '📊' },
+    { id: 'spreadsheet', label: 'Spreadsheets', icon: '📈' }
+  ];
+
+  return (
+    <>
+      {/* Sidebar Navigation */}
+      <div
+        className={`
+          fixed top-0 left-0 z-40 w-64 h-full 
+          bg-gray-800/95 backdrop-blur-md 
+          border-r border-gray-700/50
+          transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
+        <div className="flex flex-col h-full">
+          {/* Top Section: New Chat & Type Selection */}
+          <div className="p-4 border-b border-gray-700/50">
+            <button className="w-full mb-4 p-3 bg-purple-600 rounded-lg font-semibold text-white transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/30">
+              <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+              <span className="relative flex items-center justify-center gap-2">
+                <span>➕</span>
+                <span>New Chat</span>
+              </span>
+            </button>
+            <div className="flex flex-col space-y-2">
+              {typeOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => onTypeChange(option.id)}
+                  className={`flex items-center gap-3 p-3 rounded-lg font-semibold transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] ${
+                    selectedType === option.id
+                      ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700/70 hover:shadow-lg hover:shadow-purple-500/20'
+                  }`}
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+                  <span className="relative text-lg">{option.icon}</span>
+                  <span className="relative">{option.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Section: Chat History (Scrollable) */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="p-4">
+              <h3 className="text-lg font-semibold text-gray-300">Chat History</h3>
+            </div>
+            <div className="flex-1 px-2 pb-4 overflow-y-auto">
+              <div className="space-y-2">
+                {chatHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-lg bg-gray-700/30 hover:bg-gray-700/50 cursor-pointer transition-all duration-300 ease-out transform hover:scale-[1.02] group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-sm">
+                          {item.type === 'form' ? '📋' : item.type === 'ppt' ? '📊' : '📈'}
+                        </span>
+                        <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors truncate">
+                          {item.title}
+                        </span>
+                      </div>
+                      <span className="text-xs text-gray-500 flex-shrink-0">{item.timestamp}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Overlay for mobile (closes sidebar on click) */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+          onClick={onToggle}
+        ></div>
+      )}
+    </>
+  );
+};
+
 // ChatConversation Component
 const ChatConversation = ({ messages }) => {
   return (
@@ -231,7 +334,27 @@ const PreviewPanel = ({ schema, isLoading }) => {
   return (
     <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Preview</h2>
+<h2 className="text-2xl font-bold"></h2>
+<div className="flex gap-2">
+  <button 
+    className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
+    disabled={!schema}
+  >
+    <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+    <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
+      <span className="transform transition-transform duration-300 group-hover:translate-x-1">Edit</span>
+    </span>
+  </button>
+  <button 
+    className="px-4 py-2 bg-purple-600 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform disabled:opacity-50 disabled:cursor-not-allowed"
+    disabled={!schema}
+  >
+    <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+    <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
+      <span className="transform transition-transform duration-300 group-hover:translate-x-1">Export</span>
+    </span>
+  </button>
+</div>
       </div>
       <div className="bg-gray-900/70 h-[40vh] md:h-[80vh] rounded-lg p-4 border border-gray-700 shadow-xl backdrop-blur-sm overflow-auto">
         {isLoading ? (
@@ -269,25 +392,31 @@ export default function ChatPage() {
   const [schema, setSchema] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [accessToken, setAccessToken] = useState(null);
+const [user, setUser] = useState(null);
+const [accessToken, setAccessToken] = useState(null);
+const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const handleLogin = (token) => {
-    setAccessToken(token);
-    fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setUser({ email: data.email, picture: data.picture }))
-      .catch(() => setUser(null));
-  };
+const handleLogin = (token) => {
+  setAccessToken(token);
+  fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((res) => res.json())
+    .then((data) => setUser({ email: data.email, picture: data.picture }))
+    .catch(() => setUser(null));
+};
 
-  const handleLogout = () => {
-    setUser(null);
-    setAccessToken(null);
-    setSchema(null);
-    setMessages([]);
-  };
+const handleLogout = () => {
+  setUser(null);
+  setAccessToken(null);
+  setSchema(null);
+  setMessages([]);
+};
+
+const toggleSidebar = () => {
+  setIsSidebarOpen(!isSidebarOpen);
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -347,11 +476,23 @@ export default function ChatPage() {
 
   return (
     <div className="h-screen w-screen flex bg-gray-900 text-white relative overflow-hidden">
-      {/* Floating orbs and background gradient */}
-      <div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-40" />
-      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
-      <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
+{/* Animated background gradient */}
+<div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-40">
+  {/* Floating orbs */}
+  <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
+  <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
+  <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
+</div>
+
+{/* Sidebar */}
+<Sidebar 
+  isOpen={isSidebarOpen} 
+  onToggle={toggleSidebar}
+  selectedType={selectedType}
+  onTypeChange={setSelectedType}
+/>
+
+{/* Error notification */}
 
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">
@@ -367,28 +508,45 @@ export default function ChatPage() {
           </div>
         </div>
       )}
+{/* Top bar controls */}
+<div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+  {user && (
+    <>
+      <img
+        src={user.picture}
+        alt="User"
+        className="w-8 h-8 rounded-full"
+      />
+      <span className="text-sm">{user.email}</span>
+      <button
+        onClick={handleLogout}
+        className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
+      >
+        Logout
+      </button>
+    </>
+  )}
+</div>
 
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-        {user && (
-          <>
-            <img
-              src={user.picture}
-              alt="User"
-              className="w-8 h-8 rounded-full"
-            />
-            <span className="text-sm">{user.email}</span>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
-            >
-              Logout
-            </button>
-          </>
-        )}
-      </div>
+{/* Toggle Sidebar Button */}
+<button
+  onClick={toggleSidebar}
+  className={`fixed top-6 z-50 p-2 bg-gray-800/90 backdrop-blur-md rounded-lg border border-gray-700/50 hover:bg-gray-700/90 transition-all duration-300 ease-out transform hover:scale-110 shadow-lg ${
+    isSidebarOpen ? 'left-64 lg:left-64' : 'left-4'
+  }`}
+  style={{ transition: 'left 0.3s' }}
+>
+  <span className="text-white text-lg">
+    {isSidebarOpen ? '◀' : '▶'}
+  </span>
+</button>
 
-      {/* Layout */}
-      <div className="flex flex-col lg:flex-row w-full h-full gap-4 lg:gap-0">
+{/* Main Content Area */}
+<div className={`flex flex-col lg:flex-row w-full h-full gap-4 lg:gap-0 transition-all duration-300 ease-in-out ${
+  isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
+}`}>
+  {/* Left Side - Preview Panel (70%) */}
+
         <div className="w-full lg:w-[70%]">
           <PreviewPanel schema={schema} isLoading={isLoading} />
         </div>

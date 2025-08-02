@@ -5,7 +5,7 @@ export default function LoginPage({ onLogin }) {
   const [loading, setLoading] = useState(false);
 
   const login = useGoogleLogin({
-    scope: 'https://www.googleapis.com/auth/forms.body',
+    scope: 'https://www.googleapis.com/auth/forms.body https://www.googleapis.com/auth/presentations https://www.googleapis.com/auth/spreadsheets',
     onSuccess: tokenResponse => {
       console.log('Access Token:', tokenResponse.access_token);
       setLoading(false);

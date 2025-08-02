@@ -35,6 +35,8 @@ function getSystemPrompt(type) {
   const basePrompt = `You are an expert at creating JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
 
 IMPORTANT RULES:
+**The task is to Generate valid JSON schemas for forms/presentations/spreadsheets based on user input as per Google's JSON Schema guidelines.
+**We are using Google forms for forms, Google Slides for presentations, and Google Sheets for spreadsheets.
 1. Always return ONLY valid JSON - no markdown, no explanations, no additional text
 2. The JSON must be properly formatted and parseable
 3. Include appropriate field types, validation rules, and UI hints
@@ -139,26 +141,65 @@ For PRESENTATIONS, create a JSON schema with:
 - "type": "presentation"
 - "title": presentation title
 - "slides": array of slide objects
-- Each slide has: title, content, layout, styling
+- Each slide should have: title, subtitle (optional), content (array of bullet points), layout
 
-Example output:
+Valid layout options: BLANK, TITLE, TITLE_AND_BODY, TITLE_AND_TWO_COLUMNS, TITLE_ONLY, SECTION_HEADER, ONE_COLUMN_TEXT, MAIN_POINT
+
+IMPORTANT: Make sure to include meaningful content for each slide with:
+- Clear, descriptive titles (required for every slide)
+- Relevant subtitles where appropriate  
+- Content as an array of bullet points (3-5 points per slide)
+- Always include at least 3-5 slides for a complete presentation
+
+Example output for "Marketing Strategy":
 {
   "type": "presentation",
-  "title": "Sample Presentation",
+  "title": "Marketing Strategy 2024",
   "slides": [
     {
-      "id": 1,
-      "type": "title",
-      "title": "Main Title",
-      "subtitle": "Subtitle text",
-      "layout": "title-slide"
+      "title": "Marketing Strategy 2024",
+      "subtitle": "Driving Brand Growth Through Digital Innovation",
+      "layout": "TITLE"
     },
     {
-      "id": 2,
-      "type": "content",
-      "title": "Content Slide",
-      "content": ["Point 1", "Point 2", "Point 3"],
-      "layout": "bullet-points"
+      "title": "Current Market Analysis",
+      "content": [
+        "Digital marketing spend increased 25% year-over-year",
+        "Social media engagement drives 40% of new customer acquisition",
+        "Mobile-first approach is now essential for reach",
+        "Video content generates 3x more engagement than static posts"
+      ],
+      "layout": "TITLE_AND_BODY"
+    },
+    {
+      "title": "Target Audience Insights",
+      "content": [
+        "Primary demographic: 25-45 years old professionals",
+        "Active on LinkedIn, Instagram, and YouTube platforms",
+        "Value authentic brand storytelling and transparency",
+        "Prefer personalized content and experiences"
+      ],
+      "layout": "TITLE_AND_BODY"
+    },
+    {
+      "title": "Key Marketing Channels",
+      "content": [
+        "Social Media Marketing: Focus on video and interactive content",
+        "Email Campaigns: Personalized nurture sequences",
+        "Content Marketing: Educational blogs and case studies",
+        "Paid Advertising: Targeted LinkedIn and Google Ads"
+      ],
+      "layout": "TITLE_AND_BODY"
+    },
+    {
+      "title": "Success Metrics & Goals",
+      "content": [
+        "Increase brand awareness by 30% in next 6 months",
+        "Generate 500 qualified leads per month",
+        "Improve customer engagement rate to 8%",
+        "Achieve 25% conversion rate from leads to customers"
+      ],
+      "layout": "TITLE_AND_BODY"
     }
   ]
 }`;
@@ -170,23 +211,48 @@ For SPREADSHEETS, create a JSON schema with:
 - "type": "spreadsheet"
 - "title": spreadsheet name
 - "sheets": array of sheet objects
-- Each sheet has: name, headers, rows, formatting
+- Each sheet has: name, headers (array), rows (array of arrays), formatting (optional)
 
-Example output:
+IMPORTANT: Make sure to include meaningful data with:
+- Clear column headers
+- Relevant sample data rows
+- Optional formatting for column widths
+
+Example output for "Budget Tracker":
 {
   "type": "spreadsheet",
-  "title": "Sample Spreadsheet",
+  "title": "Budget Tracker 2024",
   "sheets": [
     {
-      "name": "Sheet1",
-      "headers": ["Name", "Email", "Status"],
+      "name": "Monthly Budget",
+      "headers": ["Category", "Budgeted Amount", "Actual Amount", "Difference", "Status"],
       "rows": [
-        ["John Doe", "john@example.com", "Active"],
-        ["Jane Smith", "jane@example.com", "Pending"]
+        ["Housing", "$1200", "$1150", "$50", "Under Budget"],
+        ["Food", "$400", "$450", "-$50", "Over Budget"],
+        ["Transportation", "$300", "$275", "$25", "Under Budget"],
+        ["Entertainment", "$200", "$180", "$20", "Under Budget"],
+        ["Utilities", "$150", "$145", "$5", "Under Budget"],
+        ["Healthcare", "$100", "$120", "-$20", "Over Budget"],
+        ["Savings", "$500", "$500", "$0", "On Target"]
       ],
       "formatting": {
         "headerStyle": "bold",
-        "columnWidths": [150, 200, 100]
+        "columnWidths": [120, 140, 140, 100, 120]
+      }
+    },
+    {
+      "name": "Expense Categories",
+      "headers": ["Category", "Type", "Priority", "Notes"],
+      "rows": [
+        ["Rent", "Fixed", "High", "Monthly payment"],
+        ["Groceries", "Variable", "High", "Weekly shopping"],
+        ["Gas", "Variable", "Medium", "Commute expenses"],
+        ["Dining Out", "Variable", "Low", "Entertainment"],
+        ["Insurance", "Fixed", "High", "Monthly premium"]
+      ],
+      "formatting": {
+        "headerStyle": "bold",
+        "columnWidths": [100, 80, 80, 200]
       }
     }
   ]
@@ -202,10 +268,18 @@ Example output:
  */
 export async function generateFormSchema(prompt, type = 'form') {
   try {
-    console.log(`🤖 Generating ${type} schema`);
+    // Map frontend types to backend types
+    const typeMapping = {
+      'ppt': 'presentation',
+      'form': 'form',
+      'spreadsheet': 'spreadsheet'
+    };
     
-    const systemPrompt = getSystemPrompt(type);
-    const userPrompt = `Create a ${type} based on this description: ${prompt}
+    const mappedType = typeMapping[type] || type;
+    console.log(`🤖 Generating ${mappedType} schema for type: ${type}`);
+    
+    const systemPrompt = getSystemPrompt(mappedType);
+    const userPrompt = `Create a ${mappedType} based on this description: ${prompt}
 
 Remember: Return ONLY valid JSON, no additional text or formatting.`;
 

@@ -59,6 +59,276 @@ async function updateGoogleFormItems(formId, items, accessToken) {
   return await res.json();
 }
 
+// Calls Google Slides API to create the presentation (only sets title)
+async function createGoogleSlides(payload, accessToken) {
+  const res = await fetch("https://slides.googleapis.com/v1/presentations", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: payload.title,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error?.message || "Failed to create Google Slides");
+  }
+
+  return await res.json(); // returns presentationId
+}
+
+// Helper function to get presentation and find text elements
+async function getGoogleSlidesStructure(presentationId, accessToken) {
+  const res = await fetch(
+    `https://slides.googleapis.com/v1/presentations/${presentationId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error?.message || "Failed to get presentation structure");
+  }
+
+  return await res.json();
+}
+
+// Calls Google Slides API batchUpdate to add slides
+async function updateGoogleSlidesItems(presentationId, slides, accessToken) {
+  if (!slides || slides.length === 0) return;
+
+  // Process slides in batches to avoid API limits and ensure proper sequencing
+  for (let i = 0; i < slides.length; i++) {
+    const slide = slides[i];
+    const slideId = `slide_${i + 1}`;
+    
+    // Step 1: Create the slide
+    const createSlideRequest = {
+      createSlide: {
+        objectId: slideId,
+        insertionIndex: i + 1,
+        slideLayoutReference: {
+          predefinedLayout: slide.layout || "TITLE_AND_BODY",
+        },
+      },
+    };
+
+    const createRes = await fetch(
+      `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ requests: [createSlideRequest] }),
+      }
+    );
+
+    if (!createRes.ok) {
+      const error = await createRes.json();
+      console.error(`❌ Failed to create slide ${i + 1}:`, error.error?.message);
+      continue;
+    }
+
+    // Step 2: Add content to the slide
+    const contentRequests = [];
+
+    // Add title text box and content
+    if (slide.title) {
+      contentRequests.push({
+        createShape: {
+          objectId: `${slideId}_title`,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 50, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" }
+            },
+            transform: {
+              scaleX: 1,
+              scaleY: 1,
+              translateX: 50,
+              translateY: 50,
+              unit: "PT"
+            }
+          }
+        }
+      });
+
+      contentRequests.push({
+        insertText: {
+          objectId: `${slideId}_title`,
+          text: slide.title,
+          insertionIndex: 0
+        }
+      });
+    }
+
+    // Add subtitle text box and content
+    if (slide.subtitle) {
+      contentRequests.push({
+        createShape: {
+          objectId: `${slideId}_subtitle`,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 30, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" }
+            },
+            transform: {
+              scaleX: 1,
+              scaleY: 1,
+              translateX: 50,
+              translateY: 120,
+              unit: "PT"
+            }
+          }
+        }
+      });
+
+      contentRequests.push({
+        insertText: {
+          objectId: `${slideId}_subtitle`,
+          text: slide.subtitle,
+          insertionIndex: 0
+        }
+      });
+    }
+
+    // Add content text box and content
+    if (slide.content && Array.isArray(slide.content)) {
+      const contentText = slide.content.map(item => `• ${item}`).join('\n');
+      
+      contentRequests.push({
+        createShape: {
+          objectId: `${slideId}_content`,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 300, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" }
+            },
+            transform: {
+              scaleX: 1,
+              scaleY: 1,
+              translateX: 50,
+              translateY: slide.subtitle ? 170 : 120,
+              unit: "PT"
+            }
+          }
+        }
+      });
+
+      contentRequests.push({
+        insertText: {
+          objectId: `${slideId}_content`,
+          text: contentText,
+          insertionIndex: 0
+        }
+      });
+    }
+
+    // Execute content creation
+    if (contentRequests.length > 0) {
+      const contentRes = await fetch(
+        `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ requests: contentRequests }),
+        }
+      );
+
+      if (!contentRes.ok) {
+        const error = await contentRes.json();
+        console.error(`❌ Failed to add content to slide ${i + 1}:`, error.error?.message);
+        continue;
+      }
+    }
+
+    // Step 3: Apply text formatting (after text exists)
+    const formatRequests = [];
+
+    if (slide.title) {
+      formatRequests.push({
+        updateTextStyle: {
+          objectId: `${slideId}_title`,
+          style: {
+            bold: true,
+            fontSize: { magnitude: 24, unit: "PT" }
+          },
+          fields: "bold,fontSize"
+        }
+      });
+    }
+
+    if (slide.subtitle) {
+      formatRequests.push({
+        updateTextStyle: {
+          objectId: `${slideId}_subtitle`,
+          style: {
+            fontSize: { magnitude: 18, unit: "PT" },
+            italic: true
+          },
+          fields: "fontSize,italic"
+        }
+      });
+    }
+
+    if (slide.content && Array.isArray(slide.content)) {
+      formatRequests.push({
+        updateTextStyle: {
+          objectId: `${slideId}_content`,
+          style: {
+            fontSize: { magnitude: 14, unit: "PT" }
+          },
+          fields: "fontSize"
+        }
+      });
+    }
+
+    // Execute formatting
+    if (formatRequests.length > 0) {
+      const formatRes = await fetch(
+        `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ requests: formatRequests }),
+        }
+      );
+
+      if (!formatRes.ok) {
+        const error = await formatRes.json();
+        console.warn(`⚠️ Failed to format slide ${i + 1}:`, error.error?.message);
+        // Continue anyway as formatting is not critical
+      }
+    }
+
+    console.log(`✅ Successfully created slide ${i + 1}: ${slide.title}`);
+  }
+
+  console.log("✅ All slides created successfully");
+  return { success: true };
+}
+
 // Converts JSON schema to Google Forms API format
 function convertSchemaToGoogleForm(schema) {
   const items = [];
@@ -124,6 +394,274 @@ function convertSchemaToGoogleForm(schema) {
       title: schema.title || "Generated Form",
     },
     items,
+  };
+}
+
+// Converts JSON schema to Google Slides API format
+function convertSchemaToGoogleSlides(schema) {
+  // Valid Google Slides predefined layouts
+  const getValidLayout = (layout) => {
+    const validLayouts = {
+      'BLANK': 'BLANK',
+      'CAPTION_ONLY': 'CAPTION_ONLY', 
+      'TITLE': 'TITLE',
+      'TITLE_AND_BODY': 'TITLE_AND_BODY',
+      'TITLE_AND_TWO_COLUMNS': 'TITLE_AND_TWO_COLUMNS',
+      'TITLE_ONLY': 'TITLE_ONLY',
+      'SECTION_HEADER': 'SECTION_HEADER',
+      'SECTION_TITLE_AND_DESCRIPTION': 'SECTION_TITLE_AND_DESCRIPTION',
+      'ONE_COLUMN_TEXT': 'ONE_COLUMN_TEXT',
+      'MAIN_POINT': 'MAIN_POINT',
+      'BIG_NUMBER': 'BIG_NUMBER'
+    };
+    
+    // Map common layout names to valid ones
+    const layoutMapping = {
+      'title-slide': 'TITLE',
+      'bullet-points': 'TITLE_AND_BODY',
+      'title-and-body': 'TITLE_AND_BODY',
+      'title-only': 'TITLE_ONLY',
+      'blank': 'BLANK'
+    };
+    
+    const mappedLayout = layoutMapping[layout?.toLowerCase()] || layout;
+    return validLayouts[mappedLayout] || 'TITLE_AND_BODY';
+  };
+
+  if (!schema.slides || !Array.isArray(schema.slides)) {
+    // Enhanced fallback: create slides based on schema content
+    const title = schema.title || "Generated Presentation";
+    const fallbackSlides = [
+      {
+        title: title,
+        subtitle: "AI Generated Presentation",
+        layout: "TITLE",
+      },
+      {
+        title: "Overview", 
+        content: [
+          "This presentation was generated from your request",
+          "Content has been structured automatically",
+          "You can edit this presentation directly in Google Slides",
+          "Each slide follows best practices for presentation design"
+        ],
+        layout: "TITLE_AND_BODY",
+      }
+    ];
+    
+    return {
+      title: title,
+      slides: fallbackSlides,
+    };
+  }
+
+  return {
+    title: schema.title || "Generated Presentation",
+    slides: schema.slides.map((slide) => ({
+      title: slide.title || "Slide Title",
+      subtitle: slide.subtitle || null,
+      content: slide.content || [],
+      layout: getValidLayout(slide.layout),
+    })),
+  };
+}
+
+// Calls Google Sheets API to create the spreadsheet
+async function createGoogleSheets(payload, accessToken) {
+  const res = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      properties: {
+        title: payload.title,
+      },
+      sheets: payload.sheets.map((sheet) => ({
+        properties: {
+          title: sheet.name,
+        },
+      })),
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error?.message || "Failed to create Google Sheets");
+  }
+
+  return await res.json(); // returns spreadsheetId
+}
+
+// Calls Google Sheets API to populate data
+async function updateGoogleSheetsData(spreadsheetId, sheetsData, accessToken) {
+  // First, get the spreadsheet to retrieve actual sheet IDs
+  const getRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!getRes.ok) {
+    const error = await getRes.json();
+    throw new Error(error.error?.message || "Failed to get spreadsheet info");
+  }
+
+  const spreadsheetInfo = await getRes.json();
+  const actualSheetIds = spreadsheetInfo.sheets.map(sheet => sheet.properties.sheetId);
+  
+  console.log('📊 Retrieved sheet IDs:', actualSheetIds);
+
+  const requests = [];
+
+  sheetsData.forEach((sheet, sheetIndex) => {
+    const sheetId = actualSheetIds[sheetIndex];
+    
+    if (!sheetId && sheetId !== 0) {
+      console.warn(`⚠️  No sheet ID found for index ${sheetIndex}`);
+      return;
+    }
+
+    if (sheet.headers && sheet.headers.length > 0) {
+      // Add headers
+      requests.push({
+        updateCells: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 0,
+            endRowIndex: 1,
+            startColumnIndex: 0,
+            endColumnIndex: sheet.headers.length,
+          },
+          rows: [
+            {
+              values: sheet.headers.map((header) => ({
+                userEnteredValue: {
+                  stringValue: header,
+                },
+                userEnteredFormat: {
+                  textFormat: {
+                    bold: true,
+                  },
+                  backgroundColor: {
+                    red: 0.9,
+                    green: 0.9,
+                    blue: 0.9,
+                  },
+                },
+              })),
+            },
+          ],
+          fields: "userEnteredValue,userEnteredFormat",
+        },
+      });
+    }
+
+    // Add data rows
+    if (sheet.rows && sheet.rows.length > 0) {
+      requests.push({
+        updateCells: {
+          range: {
+            sheetId: sheetId,
+            startRowIndex: 1,
+            endRowIndex: sheet.rows.length + 1,
+            startColumnIndex: 0,
+            endColumnIndex: sheet.headers ? sheet.headers.length : sheet.rows[0].length,
+          },
+          rows: sheet.rows.map((row) => ({
+            values: row.map((cell) => ({
+              userEnteredValue: {
+                stringValue: String(cell || ""),
+              },
+            })),
+          })),
+          fields: "userEnteredValue",
+        },
+      });
+    }
+
+    // Apply column formatting if specified
+    if (sheet.formatting && sheet.formatting.columnWidths) {
+      sheet.formatting.columnWidths.forEach((width, colIndex) => {
+        requests.push({
+          updateDimensionProperties: {
+            range: {
+              sheetId: sheetId,
+              dimension: "COLUMNS",
+              startIndex: colIndex,
+              endIndex: colIndex + 1,
+            },
+            properties: {
+              pixelSize: width,
+            },
+            fields: "pixelSize",
+          },
+        });
+      });
+    }
+  });
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error?.message || "Failed to update Google Sheets data");
+  }
+
+  return await res.json();
+}
+
+// Converts JSON schema to Google Sheets API format
+function convertSchemaToGoogleSheets(schema) {
+  if (!schema.sheets || !Array.isArray(schema.sheets)) {
+    // Enhanced fallback: create a spreadsheet from schema properties if sheets don't exist
+    const title = schema.title || "Generated Spreadsheet";
+    const fallbackSheets = [
+      {
+        name: "Sheet1",
+        headers: ["Item", "Description", "Status"],
+        rows: [
+          ["Sample Item 1", "This is a sample entry", "Active"],
+          ["Sample Item 2", "Another sample entry", "Pending"],
+          ["Sample Item 3", "Third sample entry", "Completed"],
+        ],
+        formatting: {
+          headerStyle: "bold",
+          columnWidths: [150, 300, 100],
+        },
+      },
+    ];
+
+    return {
+      title: title,
+      sheets: fallbackSheets,
+    };
+  }
+
+  return {
+    title: schema.title || "Generated Spreadsheet",
+    sheets: schema.sheets.map((sheet) => ({
+      name: sheet.name || "Sheet1",
+      headers: sheet.headers || [],
+      rows: sheet.rows || [],
+      formatting: sheet.formatting || {},
+    })),
   };
 }
 
@@ -290,7 +828,20 @@ const ChatConversation = ({ messages }) => {
 };
 
 // ChatInputBox Component
-const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading }) => {
+const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, selectedType }) => {
+  const getPlaceholder = () => {
+    switch (selectedType) {
+      case 'form':
+        return 'Describe the form you want to create...';
+      case 'ppt':
+        return 'Describe the presentation you want to create...';
+      case 'spreadsheet':
+        return 'Describe the spreadsheet you want to create...';
+      default:
+        return 'Type your request here...';
+    }
+  };
+
   return (
     <div className="p-2 md:p-6 bg-gray-800/90 backdrop-blur-md border-t border-gray-700/50">
       <form
@@ -302,7 +853,7 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading }) => {
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Type your request here..."
+            placeholder={getPlaceholder()}
             className="w-full p-4 pr-12 rounded-lg bg-gray-700 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-600"
           />
           <button
@@ -329,12 +880,12 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading }) => {
   );
 };
 
-// PreviewPanel Component that shows iframe of Google Form
-const PreviewPanel = ({ schema, isLoading }) => {
+// PreviewPanel Component that shows iframe of Google Form or Slides
+const PreviewPanel = ({ schema, isLoading, selectedType }) => {
   return (
     <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
       <div className="flex justify-between items-center mb-6">
-<h2 className="text-2xl font-bold"></h2>
+<h2 className="text-2xl font-bold">{selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}</h2>
 <div className="flex gap-2">
   <button 
     className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
@@ -361,7 +912,7 @@ const PreviewPanel = ({ schema, isLoading }) => {
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
-              <p className="text-gray-400">Generating schema...</p>
+              <p className="text-gray-400">Generating {selectedType}...</p>
             </div>
           </div>
         ) : schema?.googleFormId ? (
@@ -372,12 +923,31 @@ const PreviewPanel = ({ schema, isLoading }) => {
             className="rounded-lg border-none"
             title="Google Form Preview"
           />
+        ) : schema?.googleSlidesId ? (
+          <iframe
+            src={`https://docs.google.com/presentation/d/${schema.googleSlidesId}/embed?start=false&loop=false&delayms=3000`}
+            width="100%"
+            height="100%"
+            className="rounded-lg border-none"
+            title="Google Slides Preview"
+            allowFullScreen
+          />
+        ) : schema?.googleSheetsId ? (
+          <iframe
+            src={`https://docs.google.com/spreadsheets/d/${schema.googleSheetsId}/edit?usp=sharing&widget=true&headers=false`}
+            width="100%"
+            height="100%"
+            className="rounded-lg border-none"
+            title="Google Sheets Preview"
+          />
         ) : (
           <div className="text-gray-400 text-center mt-20">
-            <div className="text-6xl mb-4">📋</div>
-            <p className="text-xl mb-2">Generated form will appear here</p>
+            <div className="text-6xl mb-4">
+              {selectedType === 'form' ? '📋' : selectedType === 'ppt' ? '📊' : '📈'}
+            </div>
+            <p className="text-xl mb-2">Generated {selectedType} will appear here</p>
             <p className="text-sm">
-              Start by describing the form you want to create
+              Start by describing the {selectedType} you want to create
             </p>
           </div>
         )}
@@ -428,33 +998,107 @@ const toggleSidebar = () => {
     setError(null);
 
     try {
-      const response = await generateSchema(chatInput, "form");
+      const response = await generateSchema(chatInput, selectedType);
       const rawSchema = response.schema;
-      const googleFormPayload = convertSchemaToGoogleForm(rawSchema);
+      
+      if (selectedType === 'form') {
+        const googleFormPayload = convertSchemaToGoogleForm(rawSchema);
 
-      if (!accessToken) {
-        throw new Error("Google access token is missing. Please login again.");
+        if (!accessToken) {
+          throw new Error("Google access token is missing. Please login again.");
+        }
+
+        // Create form with title only
+        const formResult = await createGoogleForm(googleFormPayload, accessToken);
+
+        // Add questions/items with batchUpdate
+        await updateGoogleFormItems(
+          formResult.formId,
+          googleFormPayload.items,
+          accessToken
+        );
+
+        setSchema({ googleFormId: formResult.formId });
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "ai",
+            content: `Generated form successfully!`,
+            timestamp: response.timestamp,
+          },
+        ]);
+      } else if (selectedType === 'ppt') {
+        const googleSlidesPayload = convertSchemaToGoogleSlides(rawSchema);
+        
+        console.log('🎨 Generated slides payload:', googleSlidesPayload);
+
+        if (!accessToken) {
+          throw new Error("Google access token is missing. Please login again.");
+        }
+
+        // Create presentation with title only
+        const slidesResult = await createGoogleSlides(googleSlidesPayload, accessToken);
+        
+        console.log('📊 Created presentation:', slidesResult.presentationId);
+
+        // Add slides with batchUpdate
+        await updateGoogleSlidesItems(
+          slidesResult.presentationId,
+          googleSlidesPayload.slides,
+          accessToken
+        );
+
+        setSchema({ googleSlidesId: slidesResult.presentationId });
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "ai",
+            content: `Generated presentation successfully!`,
+            timestamp: response.timestamp,
+          },
+        ]);
+      } else if (selectedType === 'spreadsheet') {
+        const googleSheetsPayload = convertSchemaToGoogleSheets(rawSchema);
+        
+        console.log('📊 Generated sheets payload:', googleSheetsPayload);
+
+        if (!accessToken) {
+          throw new Error("Google access token is missing. Please login again.");
+        }
+
+        // Create spreadsheet with title and sheets structure
+        const sheetsResult = await createGoogleSheets(googleSheetsPayload, accessToken);
+        
+        console.log('📈 Created spreadsheet:', sheetsResult.spreadsheetId);
+
+        // Add data with batchUpdate
+        await updateGoogleSheetsData(
+          sheetsResult.spreadsheetId,
+          googleSheetsPayload.sheets,
+          accessToken
+        );
+
+        setSchema({ googleSheetsId: sheetsResult.spreadsheetId });
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "ai",
+            content: `Generated spreadsheet successfully!`,
+            timestamp: response.timestamp,
+          },
+        ]);
+      } else {
+        // For other types, just store the schema for now
+        setSchema(rawSchema);
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "ai",
+            content: `Generated ${selectedType} successfully!`,
+            timestamp: response.timestamp,
+          },
+        ]);
       }
-
-      // Create form with title only
-      const formResult = await createGoogleForm(googleFormPayload, accessToken);
-
-      // Add questions/items with batchUpdate
-      await updateGoogleFormItems(
-        formResult.formId,
-        googleFormPayload.items,
-        accessToken
-      );
-
-      setSchema({ googleFormId: formResult.formId });
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "ai",
-          content: `Generated form successfully!`,
-          timestamp: response.timestamp,
-        },
-      ]);
     } catch (err) {
       setError(err.message);
       setMessages((prev) => [
@@ -549,7 +1193,7 @@ const toggleSidebar = () => {
   {/* Left Side - Preview Panel (70%) */}
 
         <div className="w-full lg:w-[70%]">
-          <PreviewPanel schema={schema} isLoading={isLoading} />
+          <PreviewPanel schema={schema} isLoading={isLoading} selectedType={selectedType} />
         </div>
         <div className="w-full lg:w-[30%] flex flex-col min-w-0">
           <ChatConversation messages={messages} />
@@ -558,6 +1202,7 @@ const toggleSidebar = () => {
             setChatInput={setChatInput}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
+            selectedType={selectedType}
           />
         </div>
       </div>

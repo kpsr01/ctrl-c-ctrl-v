@@ -100,27 +100,143 @@ async function getGoogleSlidesStructure(presentationId, accessToken) {
   return await res.json();
 }
 
-// Calls Google Slides API batchUpdate to add slides
+// *** THIS IS THE CORRECTED AND OPTIMIZED FUNCTION ***
+// Calls Google Slides API batchUpdate to add all slides and content in one call
 async function updateGoogleSlidesItems(presentationId, slides, accessToken) {
   if (!slides || slides.length === 0) return;
 
-  // Process slides in batches to avoid API limits and ensure proper sequencing
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
-    const slideId = `slide_${i + 1}`;
-    
-    // Step 1: Create the slide
-    const createSlideRequest = {
+  // Get the presentation to find the ID of the default first slide
+  const presentation = await getGoogleSlidesStructure(presentationId, accessToken);
+  const defaultSlideId = presentation.slides[0]?.objectId;
+
+  const requests = [];
+
+  // 1. Add a request to delete the default blank slide that is automatically created.
+  if (defaultSlideId) {
+    requests.push({
+      deleteObject: {
+        objectId: defaultSlideId,
+      },
+    });
+  }
+
+  // 2. Loop through the slides data and build all requests in the correct order.
+  slides.forEach((slide, i) => {
+    const slideId = `slide_${i + 1}`; // e.g., slide_1, slide_2
+
+    // Request to create the new slide
+    requests.push({
       createSlide: {
         objectId: slideId,
-        insertionIndex: i + 1,
+        insertionIndex: i, // Add slides in order
         slideLayoutReference: {
           predefinedLayout: slide.layout || "TITLE_AND_BODY",
         },
       },
-    };
+    });
 
-    const createRes = await fetch(
+    // Requests for the title
+    if (slide.title) {
+      const titleId = `${slideId}_title`;
+      requests.push({
+        createShape: {
+          objectId: titleId,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 50, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" },
+            },
+            transform: {
+              scaleX: 1, scaleY: 1, translateX: 50, translateY: 50, unit: "PT",
+            },
+          },
+        },
+      });
+      requests.push({
+        insertText: { objectId: titleId, text: slide.title, insertionIndex: 0 },
+      });
+      requests.push({
+        updateTextStyle: {
+          objectId: titleId,
+          style: {
+            bold: true,
+            fontSize: { magnitude: 24, unit: "PT" },
+          },
+          fields: "bold,fontSize",
+        },
+      });
+    }
+
+    // Requests for the subtitle
+    if (slide.subtitle) {
+      const subtitleId = `${slideId}_subtitle`;
+      requests.push({
+        createShape: {
+          objectId: subtitleId,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 30, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" },
+            },
+            transform: {
+              scaleX: 1, scaleY: 1, translateX: 50, translateY: 120, unit: "PT",
+            },
+          },
+        },
+      });
+      requests.push({
+        insertText: { objectId: subtitleId, text: slide.subtitle, insertionIndex: 0 },
+      });
+      requests.push({
+        updateTextStyle: {
+          objectId: subtitleId,
+          style: { fontSize: { magnitude: 18, unit: "PT" }, italic: true },
+          fields: "fontSize,italic",
+        },
+      });
+    }
+
+    // Requests for the main content
+    if (slide.content && Array.isArray(slide.content) && slide.content.length > 0) {
+      const contentId = `${slideId}_content`;
+      const contentText = slide.content.map(item => `• ${item}`).join('\n');
+      requests.push({
+        createShape: {
+          objectId: contentId,
+          shapeType: "TEXT_BOX",
+          elementProperties: {
+            pageObjectId: slideId,
+            size: {
+              height: { magnitude: 300, unit: "PT" },
+              width: { magnitude: 600, unit: "PT" },
+            },
+            transform: {
+              scaleX: 1, scaleY: 1, translateX: 50, translateY: slide.subtitle ? 170 : 120, unit: "PT",
+            },
+          },
+        },
+      });
+      requests.push({
+        insertText: { objectId: contentId, text: contentText, insertionIndex: 0 },
+      });
+      requests.push({
+        updateTextStyle: {
+          objectId: contentId,
+          style: { fontSize: { magnitude: 14, unit: "PT" } },
+          fields: "fontSize",
+        },
+      });
+    }
+    console.log(`✅ Queued up requests for slide ${i + 1}: ${slide.title}`);
+  });
+
+  // 3. Execute all requests in a single API call
+  if (requests.length > 0) {
+    const res = await fetch(
       `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
       {
         method: "POST",
@@ -128,204 +244,18 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken) {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ requests: [createSlideRequest] }),
+        body: JSON.stringify({ requests }),
       }
     );
 
-    if (!createRes.ok) {
-      const error = await createRes.json();
-      console.error(`❌ Failed to create slide ${i + 1}:`, error.error?.message);
-      continue;
+    if (!res.ok) {
+      const error = await res.json();
+      console.error(`❌ Failed to update slides:`, error.error?.message);
+      throw new Error(error.error?.message || "Failed to update Google Slides");
     }
-
-    // Step 2: Add content to the slide
-    const contentRequests = [];
-
-    // Add title text box and content
-    if (slide.title) {
-      contentRequests.push({
-        createShape: {
-          objectId: `${slideId}_title`,
-          shapeType: "TEXT_BOX",
-          elementProperties: {
-            pageObjectId: slideId,
-            size: {
-              height: { magnitude: 50, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" }
-            },
-            transform: {
-              scaleX: 1,
-              scaleY: 1,
-              translateX: 50,
-              translateY: 50,
-              unit: "PT"
-            }
-          }
-        }
-      });
-
-      contentRequests.push({
-        insertText: {
-          objectId: `${slideId}_title`,
-          text: slide.title,
-          insertionIndex: 0
-        }
-      });
-    }
-
-    // Add subtitle text box and content
-    if (slide.subtitle) {
-      contentRequests.push({
-        createShape: {
-          objectId: `${slideId}_subtitle`,
-          shapeType: "TEXT_BOX",
-          elementProperties: {
-            pageObjectId: slideId,
-            size: {
-              height: { magnitude: 30, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" }
-            },
-            transform: {
-              scaleX: 1,
-              scaleY: 1,
-              translateX: 50,
-              translateY: 120,
-              unit: "PT"
-            }
-          }
-        }
-      });
-
-      contentRequests.push({
-        insertText: {
-          objectId: `${slideId}_subtitle`,
-          text: slide.subtitle,
-          insertionIndex: 0
-        }
-      });
-    }
-
-    // Add content text box and content
-    if (slide.content && Array.isArray(slide.content)) {
-      const contentText = slide.content.map(item => `• ${item}`).join('\n');
-      
-      contentRequests.push({
-        createShape: {
-          objectId: `${slideId}_content`,
-          shapeType: "TEXT_BOX",
-          elementProperties: {
-            pageObjectId: slideId,
-            size: {
-              height: { magnitude: 300, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" }
-            },
-            transform: {
-              scaleX: 1,
-              scaleY: 1,
-              translateX: 50,
-              translateY: slide.subtitle ? 170 : 120,
-              unit: "PT"
-            }
-          }
-        }
-      });
-
-      contentRequests.push({
-        insertText: {
-          objectId: `${slideId}_content`,
-          text: contentText,
-          insertionIndex: 0
-        }
-      });
-    }
-
-    // Execute content creation
-    if (contentRequests.length > 0) {
-      const contentRes = await fetch(
-        `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ requests: contentRequests }),
-        }
-      );
-
-      if (!contentRes.ok) {
-        const error = await contentRes.json();
-        console.error(`❌ Failed to add content to slide ${i + 1}:`, error.error?.message);
-        continue;
-      }
-    }
-
-    // Step 3: Apply text formatting (after text exists)
-    const formatRequests = [];
-
-    if (slide.title) {
-      formatRequests.push({
-        updateTextStyle: {
-          objectId: `${slideId}_title`,
-          style: {
-            bold: true,
-            fontSize: { magnitude: 24, unit: "PT" }
-          },
-          fields: "bold,fontSize"
-        }
-      });
-    }
-
-    if (slide.subtitle) {
-      formatRequests.push({
-        updateTextStyle: {
-          objectId: `${slideId}_subtitle`,
-          style: {
-            fontSize: { magnitude: 18, unit: "PT" },
-            italic: true
-          },
-          fields: "fontSize,italic"
-        }
-      });
-    }
-
-    if (slide.content && Array.isArray(slide.content)) {
-      formatRequests.push({
-        updateTextStyle: {
-          objectId: `${slideId}_content`,
-          style: {
-            fontSize: { magnitude: 14, unit: "PT" }
-          },
-          fields: "fontSize"
-        }
-      });
-    }
-
-    // Execute formatting
-    if (formatRequests.length > 0) {
-      const formatRes = await fetch(
-        `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ requests: formatRequests }),
-        }
-      );
-
-      if (!formatRes.ok) {
-        const error = await formatRes.json();
-        console.warn(`⚠️ Failed to format slide ${i + 1}:`, error.error?.message);
-        // Continue anyway as formatting is not critical
-      }
-    }
-
-    console.log(`✅ Successfully created slide ${i + 1}: ${slide.title}`);
   }
 
-  console.log("✅ All slides created successfully");
+  console.log("✅ All slides created successfully in one batch!");
   return { success: true };
 }
 
@@ -403,7 +333,7 @@ function convertSchemaToGoogleSlides(schema) {
   const getValidLayout = (layout) => {
     const validLayouts = {
       'BLANK': 'BLANK',
-      'CAPTION_ONLY': 'CAPTION_ONLY', 
+      'CAPTION_ONLY': 'CAPTION_ONLY',
       'TITLE': 'TITLE',
       'TITLE_AND_BODY': 'TITLE_AND_BODY',
       'TITLE_AND_TWO_COLUMNS': 'TITLE_AND_TWO_COLUMNS',
@@ -414,7 +344,7 @@ function convertSchemaToGoogleSlides(schema) {
       'MAIN_POINT': 'MAIN_POINT',
       'BIG_NUMBER': 'BIG_NUMBER'
     };
-    
+
     // Map common layout names to valid ones
     const layoutMapping = {
       'title-slide': 'TITLE',
@@ -423,7 +353,7 @@ function convertSchemaToGoogleSlides(schema) {
       'title-only': 'TITLE_ONLY',
       'blank': 'BLANK'
     };
-    
+
     const mappedLayout = layoutMapping[layout?.toLowerCase()] || layout;
     return validLayouts[mappedLayout] || 'TITLE_AND_BODY';
   };
@@ -438,7 +368,7 @@ function convertSchemaToGoogleSlides(schema) {
         layout: "TITLE",
       },
       {
-        title: "Overview", 
+        title: "Overview",
         content: [
           "This presentation was generated from your request",
           "Content has been structured automatically",
@@ -448,7 +378,7 @@ function convertSchemaToGoogleSlides(schema) {
         layout: "TITLE_AND_BODY",
       }
     ];
-    
+
     return {
       title: title,
       slides: fallbackSlides,
@@ -515,16 +445,16 @@ async function updateGoogleSheetsData(spreadsheetId, sheetsData, accessToken) {
 
   const spreadsheetInfo = await getRes.json();
   const actualSheetIds = spreadsheetInfo.sheets.map(sheet => sheet.properties.sheetId);
-  
+
   console.log('📊 Retrieved sheet IDs:', actualSheetIds);
 
   const requests = [];
 
   sheetsData.forEach((sheet, sheetIndex) => {
     const sheetId = actualSheetIds[sheetIndex];
-    
+
     if (!sheetId && sheetId !== 0) {
-      console.warn(`⚠️  No sheet ID found for index ${sheetIndex}`);
+      console.warn(`⚠️  No sheet ID found for index ${sheetIndex}`);
       return;
     }
 
@@ -690,12 +620,12 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
       {/* Sidebar Navigation */}
       <div
         className={`
-          fixed top-0 left-0 z-40 w-64 h-full 
-          bg-gray-800/95 backdrop-blur-md 
-          border-r border-gray-700/50
-          transition-transform duration-300 ease-in-out
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+         fixed top-0 left-0 z-40 w-64 h-full 
+         bg-gray-800/95 backdrop-blur-md 
+         border-r border-gray-700/50
+         transition-transform duration-300 ease-in-out
+         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+       `}
       >
         <div className="flex flex-col h-full">
           {/* Top Section: New Chat & Type Selection */}
@@ -712,11 +642,10 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
                 <button
                   key={option.id}
                   onClick={() => onTypeChange(option.id)}
-                  className={`flex items-center gap-3 p-3 rounded-lg font-semibold transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] ${
-                    selectedType === option.id
+                  className={`flex items-center gap-3 p-3 rounded-lg font-semibold transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] ${selectedType === option.id
                       ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
                       : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700/70 hover:shadow-lg hover:shadow-purple-500/20'
-                  }`}
+                    }`}
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
                   <span className="relative text-lg">{option.icon}</span>
@@ -759,7 +688,7 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
 
       {/* Overlay for mobile (closes sidebar on click) */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
           onClick={onToggle}
         ></div>
@@ -785,13 +714,12 @@ const ChatConversation = ({ messages }) => {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${
-              message.type === "user"
+            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${message.type === "user"
                 ? "bg-purple-600/90 ml-auto max-w-md shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
                 : message.isError
-                ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
-                : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
-            }`}
+                  ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
+                  : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
+              }`}
             style={{
               animationDelay: `${index * 0.1}s`,
               animationFillMode: "backwards",
@@ -804,9 +732,8 @@ const ChatConversation = ({ messages }) => {
                 </div>
               ) : (
                 <div
-                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${
-                    message.isError ? "bg-red-700" : "bg-gray-700"
-                  }`}
+                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${message.isError ? "bg-red-700" : "bg-gray-700"
+                    }`}
                 >
                   {message.isError ? "❌" : "🤖"}
                 </div>
@@ -885,27 +812,27 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
   return (
     <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
       <div className="flex justify-between items-center mb-6">
-<h2 className="text-2xl font-bold">{selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}</h2>
-<div className="flex gap-2">
-  <button 
-    className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
-    disabled={!schema}
-  >
-    <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
-    <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
-      <span className="transform transition-transform duration-300 group-hover:translate-x-1">Edit</span>
-    </span>
-  </button>
-  <button 
-    className="px-4 py-2 bg-purple-600 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform disabled:opacity-50 disabled:cursor-not-allowed"
-    disabled={!schema}
-  >
-    <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
-    <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
-      <span className="transform transition-transform duration-300 group-hover:translate-x-1">Export</span>
-    </span>
-  </button>
-</div>
+        <h2 className="text-2xl font-bold">{selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}</h2>
+        <div className="flex gap-2">
+          <button
+            className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
+            disabled={!schema}
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+            <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
+              <span className="transform transition-transform duration-300 group-hover:translate-x-1">Edit</span>
+            </span>
+          </button>
+          <button
+            className="px-4 py-2 bg-purple-600 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!schema}
+          >
+            <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
+            <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
+              <span className="transform transition-transform duration-300 group-hover:translate-x-1">Export</span>
+            </span>
+          </button>
+        </div>
       </div>
       <div className="bg-gray-900/70 h-[40vh] md:h-[80vh] rounded-lg p-4 border border-gray-700 shadow-xl backdrop-blur-sm overflow-auto">
         {isLoading ? (
@@ -967,26 +894,26 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedType, setSelectedType] = useState('form');
 
-const handleLogin = (token) => {
-  setAccessToken(token);
-  fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then((res) => res.json())
-    .then((data) => setUser({ email: data.email, picture: data.picture }))
-    .catch(() => setUser(null));
-};
+  const handleLogin = (token) => {
+    setAccessToken(token);
+    fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => setUser({ email: data.email, picture: data.picture }))
+      .catch(() => setUser(null));
+  };
 
-const handleLogout = () => {
-  setUser(null);
-  setAccessToken(null);
-  setSchema(null);
-  setMessages([]);
-};
+  const handleLogout = () => {
+    setUser(null);
+    setAccessToken(null);
+    setSchema(null);
+    setMessages([]);
+  };
 
-const toggleSidebar = () => {
-  setIsSidebarOpen(!isSidebarOpen);
-};
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
 
   const handleSubmit = async (e) => {
@@ -1000,7 +927,7 @@ const toggleSidebar = () => {
     try {
       const response = await generateSchema(chatInput, selectedType);
       const rawSchema = response.schema;
-      
+
       if (selectedType === 'form') {
         const googleFormPayload = convertSchemaToGoogleForm(rawSchema);
 
@@ -1029,7 +956,7 @@ const toggleSidebar = () => {
         ]);
       } else if (selectedType === 'ppt') {
         const googleSlidesPayload = convertSchemaToGoogleSlides(rawSchema);
-        
+
         console.log('🎨 Generated slides payload:', googleSlidesPayload);
 
         if (!accessToken) {
@@ -1038,7 +965,7 @@ const toggleSidebar = () => {
 
         // Create presentation with title only
         const slidesResult = await createGoogleSlides(googleSlidesPayload, accessToken);
-        
+
         console.log('📊 Created presentation:', slidesResult.presentationId);
 
         // Add slides with batchUpdate
@@ -1059,7 +986,7 @@ const toggleSidebar = () => {
         ]);
       } else if (selectedType === 'spreadsheet') {
         const googleSheetsPayload = convertSchemaToGoogleSheets(rawSchema);
-        
+
         console.log('📊 Generated sheets payload:', googleSheetsPayload);
 
         if (!accessToken) {
@@ -1068,7 +995,7 @@ const toggleSidebar = () => {
 
         // Create spreadsheet with title and sheets structure
         const sheetsResult = await createGoogleSheets(googleSheetsPayload, accessToken);
-        
+
         console.log('📈 Created spreadsheet:', sheetsResult.spreadsheetId);
 
         // Add data with batchUpdate
@@ -1121,23 +1048,23 @@ const toggleSidebar = () => {
 
   return (
     <div className="h-screen w-screen flex bg-gray-900 text-white relative overflow-hidden">
-{/* Animated background gradient */}
-<div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-40">
-  {/* Floating orbs */}
-  <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
-  <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
-  <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
-</div>
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-40">
+        {/* Floating orbs */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
+        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
+      </div>
 
-{/* Sidebar */}
-<Sidebar 
-  isOpen={isSidebarOpen} 
-  onToggle={toggleSidebar}
-  selectedType={selectedType}
-  onTypeChange={setSelectedType}
-/>
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onToggle={toggleSidebar}
+        selectedType={selectedType}
+        onTypeChange={setSelectedType}
+      />
 
-{/* Error notification */}
+      {/* Error notification */}
 
       {error && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">
@@ -1153,44 +1080,42 @@ const toggleSidebar = () => {
           </div>
         </div>
       )}
-{/* Top bar controls */}
-<div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-  {user && (
-    <>
-      <img
-        src={user.picture}
-        alt="User"
-        className="w-8 h-8 rounded-full"
-      />
-      <span className="text-sm">{user.email}</span>
+      {/* Top bar controls */}
+      <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
+        {user && (
+          <>
+            <img
+              src={user.picture}
+              alt="User"
+              className="w-8 h-8 rounded-full"
+            />
+            <span className="text-sm">{user.email}</span>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
+            >
+              Logout
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Toggle Sidebar Button */}
       <button
-        onClick={handleLogout}
-        className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
+        onClick={toggleSidebar}
+        className={`fixed top-6 z-50 p-2 bg-gray-800/90 backdrop-blur-md rounded-lg border border-gray-700/50 hover:bg-gray-700/90 transition-all duration-300 ease-out transform hover:scale-110 shadow-lg ${isSidebarOpen ? 'left-64 lg:left-64' : 'left-4'
+          }`}
+        style={{ transition: 'left 0.3s' }}
       >
-        Logout
+        <span className="text-white text-lg">
+          {isSidebarOpen ? '◀' : '▶'}
+        </span>
       </button>
-    </>
-  )}
-</div>
 
-{/* Toggle Sidebar Button */}
-<button
-  onClick={toggleSidebar}
-  className={`fixed top-6 z-50 p-2 bg-gray-800/90 backdrop-blur-md rounded-lg border border-gray-700/50 hover:bg-gray-700/90 transition-all duration-300 ease-out transform hover:scale-110 shadow-lg ${
-    isSidebarOpen ? 'left-64 lg:left-64' : 'left-4'
-  }`}
-  style={{ transition: 'left 0.3s' }}
->
-  <span className="text-white text-lg">
-    {isSidebarOpen ? '◀' : '▶'}
-  </span>
-</button>
-
-{/* Main Content Area */}
-<div className={`flex flex-col lg:flex-row w-full h-full gap-4 lg:gap-0 transition-all duration-300 ease-in-out ${
-  isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-}`}>
-  {/* Left Side - Preview Panel (70%) */}
+      {/* Main Content Area */}
+      <div className={`flex flex-col lg:flex-row w-full h-full gap-4 lg:gap-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
+        }`}>
+        {/* Left Side - Preview Panel (70%) */}
 
         <div className="w-full lg:w-[70%]">
           <PreviewPanel schema={schema} isLoading={isLoading} selectedType={selectedType} />

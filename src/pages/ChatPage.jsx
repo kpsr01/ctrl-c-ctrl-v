@@ -698,60 +698,62 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
 };
 
 // ChatConversation Component
+// ChatConversation Component
 const ChatConversation = ({ messages }) => {
-  return (
-    <div className="flex-1 p-2 md:p-6 overflow-auto m-4 md:m-10">
-      <div className="max-w-4xl mx-auto space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-gray-400 animate-fade-in-up">
-            <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
-            <p className="text-xl mb-2">Start a conversation!</p>
-            <p className="text-sm">
-              Describe what kind of form, presentation, or spreadsheet you need
-            </p>
-          </div>
-        )}
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${message.type === "user"
-                ? "bg-purple-600/90 ml-auto max-w-md shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
-                : message.isError
-                  ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
-                  : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
-              }`}
-            style={{
-              animationDelay: `${index * 0.1}s`,
-              animationFillMode: "backwards",
-            }}
-          >
-            <div className="relative">
-              {message.type === "user" ? (
-                <div className="absolute -right-2 -top-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-sm animate-fade-in">
-                  👤
-                </div>
-              ) : (
-                <div
-                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${message.isError ? "bg-red-700" : "bg-gray-700"
-                    }`}
-                >
-                  {message.isError ? "❌" : "🤖"}
-                </div>
-              )}
-              <div className="mt-1">
-                {message.content}
-                {message.timestamp && (
-                  <div className="text-xs text-gray-400 mt-2">
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return (
+    <div className="flex-1 p-2 md:p-6 overflow-auto m-4 md:m-10">
+      <div className="max-w-4xl mx-auto space-y-4">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-400 animate-fade-in-up">
+            <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
+            <p className="text-xl mb-2">Start a conversation!</p>
+            <p className="text-sm">
+              Describe what kind of form, presentation, or spreadsheet you need
+            </p>
+          </div>
+        )}
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${message.type === "user"
+                ? "bg-purple-600/90 ml-auto max-w-md shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+                : message.isError
+                  ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
+                  : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
+              }`}
+            style={{
+              animationDelay: `${index * 0.1}s`,
+              animationFillMode: "backwards",
+            }}
+          >
+            <div className="relative">
+              {message.type === "user" ? (
+                <div className="absolute -right-2 -top-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-sm animate-fade-in">
+                  👤
+                </div>
+              ) : (
+                <div
+                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${message.isError ? "bg-red-700" : "bg-gray-700"
+                    }`}
+                >
+                  {message.isError ? "❌" : "🤖"}
+                </div>
+              )}
+                  {/* The fix is in the line below */}
+              <div className="mt-1 pl-8"> {/* <-- FIX: Added pl-8 for spacing */}
+                {message.content}
+                {message.timestamp && (
+                  <div className="text-xs text-gray-400 mt-2">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 // ChatInputBox Component

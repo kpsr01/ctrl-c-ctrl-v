@@ -38,7 +38,7 @@ app.get('/health', (req, res) => {
 // Generate form schema endpoint
 app.post('/api/generate-schema', async (req, res) => {
   try {
-    const { prompt, type = 'form' } = req.body;
+    const { prompt, type = 'form', context = null } = req.body;
 
     if (!prompt || prompt.trim().length === 0) {
       return res.status(400).json({
@@ -48,8 +48,15 @@ app.post('/api/generate-schema', async (req, res) => {
     }
 
     console.log(`Generating ${type} schema for prompt:`, prompt);
+    if (context) {
+      console.log('🔄 Context provided:', {
+        isEditing: context.isEditing,
+        historyLength: context.conversationHistory?.length || 0,
+        hasCurrentSchema: !!context.currentSchema
+      });
+    }
 
-    const schema = await generateFormSchema(prompt, type);
+    const schema = await generateFormSchema(prompt, type, context);
 
     res.json({
       success: true,

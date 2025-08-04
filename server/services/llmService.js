@@ -32,16 +32,22 @@ const openRouterClient = axios.create({
  * Generate system prompt based on content type
  */
 function getSystemPrompt(type) {
-  const basePrompt = `You are an expert at creating JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
+  const basePrompt = `You are an expert at creating and editing JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
 
 IMPORTANT RULES:
-**The task is to Generate valid JSON schemas for forms/presentations/spreadsheets based on user input as per Google's JSON Schema guidelines.
-**We are using Google forms for forms, Google Slides for presentations, and Google Sheets for spreadsheets.
 1. Always return ONLY valid JSON - no markdown, no explanations, no additional text
 2. The JSON must be properly formatted and parseable
 3. Include appropriate field types, validation rules, and UI hints
 4. Make the schema comprehensive but not overly complex
-5. Use standard JSON Schema format with additional UI schema for rendering`;
+5. Use standard JSON Schema format with additional UI schema for rendering
+6. When editing, make ONLY the requested changes and preserve the rest of the structure
+7. For edits, carefully analyze the current schema and modify only what the user specifically requests
+
+EDITING BEHAVIOR:
+- When you receive a current schema and edit request, preserve all existing content unless specifically asked to change it
+- Make minimal, targeted changes based on the user's request
+- Maintain the same structure and format as the existing schema
+- If adding new elements, follow the same patterns as existing elements`;
 
   switch (type) {
     case 'form':
@@ -266,7 +272,7 @@ Example output for "Budget Tracker":
 /**
  * Generate form schema using OpenRouter LLM
  */
-export async function generateFormSchema(prompt, type = 'form') {
+export async function generateFormSchema(prompt, type = 'form', context = null) {
   try {
     // Map frontend types to backend types
     const typeMapping = {
@@ -279,23 +285,62 @@ export async function generateFormSchema(prompt, type = 'form') {
     console.log(`🤖 Generating ${mappedType} schema for type: ${type}`);
     
     const systemPrompt = getSystemPrompt(mappedType);
-    const userPrompt = `Create a ${mappedType} based on this description: ${prompt}
+    
+    // Build user prompt based on whether we're editing or creating new
+    let userPrompt;
+    const messages = [
+      {
+        role: 'system',
+        content: systemPrompt
+      }
+    ];
+
+    if (context && context.isEditing && context.currentSchema) {
+      // EDITING MODE: Include conversation history and current schema
+      console.log('🔄 Edit mode: Including context and schema');
+      
+      // Add conversation history to messages
+      if (context.conversationHistory && context.conversationHistory.length > 0) {
+        // Add the previous conversation messages (excluding the current one)
+        const previousMessages = context.conversationHistory.slice(0, -1);
+        previousMessages.forEach(msg => {
+          if (msg.role === 'user' || msg.role === 'assistant') {
+            messages.push({
+              role: msg.role,
+              content: msg.content
+            });
+          }
+        });
+      }
+
+      userPrompt = `EDIT MODE: Based on our previous conversation and the current ${mappedType} schema below, please make the requested changes.
+
+CURRENT SCHEMA:
+${JSON.stringify(context.currentSchema, null, 2)}
+
+USER REQUEST: ${prompt}
+
+Please return the updated schema with the requested modifications. Maintain the existing structure and only change what the user specifically requested.
 
 Remember: Return ONLY valid JSON, no additional text or formatting.`;
+    } else {
+      // CREATION MODE: Fresh start
+      console.log('🆕 Creation mode: Fresh start');
+      userPrompt = `Create a ${mappedType} based on this description: ${prompt}
+
+Remember: Return ONLY valid JSON, no additional text or formatting.`;
+    }
+
+    // Add the current user message
+    messages.push({
+      role: 'user',
+      content: userPrompt
+    });
 
     const response = await openRouterClient.post('/chat/completions', {
       model: MODEL_NAME,
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: userPrompt
-        }
-      ],
-      temperature: 0.3,
+      messages: messages,
+      temperature: context && context.isEditing ? 0.1 : 0.3, // Lower temperature for edits to be more conservative
       max_tokens: 2000,
       top_p: 0.9,
       frequency_penalty: 0,

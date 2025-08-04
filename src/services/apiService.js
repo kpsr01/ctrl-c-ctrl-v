@@ -38,12 +38,19 @@ api.interceptors.response.use(
 /**
  * Generate form schema from user prompt
  */
-export async function generateSchema(prompt, type = 'form') {
+export async function generateSchema(prompt, type = 'form', contextData = null) {
   try {
-    const response = await api.post('/api/generate-schema', {
+    const requestBody = {
       prompt,
       type
-    });
+    };
+
+    // Add context data if provided (for editing mode)
+    if (contextData) {
+      requestBody.context = contextData;
+    }
+
+    const response = await api.post('/api/generate-schema', requestBody);
     
     return response.data;
   } catch (error) {

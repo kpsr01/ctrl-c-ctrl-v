@@ -59,6 +59,84 @@ async function updateGoogleFormItems(formId, items, accessToken) {
   return await res.json();
 }
 
+// Helper function to clear all items from a Google Form
+async function clearGoogleFormItems(formId, accessToken) {
+  // First, get the current form structure
+  const getRes = await fetch(`https://forms.googleapis.com/v1/forms/${formId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!getRes.ok) {
+    console.warn("Could not fetch form structure for clearing");
+    return;
+  }
+
+  const form = await getRes.json();
+  const existingItems = form.items || [];
+
+  if (existingItems.length === 0) return;
+
+  // Create delete requests for all existing items
+  const requests = existingItems.map((item) => ({
+    deleteItem: {
+      location: {
+        index: 0, // Always delete from index 0 since indices shift
+      },
+    },
+  }));
+
+  const res = await fetch(
+    `https://forms.googleapis.com/v1/forms/${formId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    console.warn("Failed to clear form items:", error.error?.message);
+  }
+}
+
+// Helper function to update Google Form title
+async function updateGoogleFormTitle(formId, newTitle, accessToken) {
+  const res = await fetch(
+    `https://forms.googleapis.com/v1/forms/${formId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            updateFormInfo: {
+              info: {
+                title: newTitle,
+              },
+              updateMask: "title",
+            },
+          },
+        ],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    console.warn("Failed to update form title:", error.error?.message);
+  }
+}
+
 // Calls Google Slides API to create the presentation (only sets title)
 async function createGoogleSlides(payload, accessToken) {
   const res = await fetch("https://slides.googleapis.com/v1/presentations", {
@@ -102,22 +180,25 @@ async function getGoogleSlidesStructure(presentationId, accessToken) {
 
 // *** THIS IS THE CORRECTED AND OPTIMIZED FUNCTION ***
 // Calls Google Slides API batchUpdate to add all slides and content in one call
-async function updateGoogleSlidesItems(presentationId, slides, accessToken) {
+async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEditMode = false) {
   if (!slides || slides.length === 0) return;
 
   // Get the presentation to find the ID of the default first slide
   const presentation = await getGoogleSlidesStructure(presentationId, accessToken);
-  const defaultSlideId = presentation.slides[0]?.objectId;
+  const existingSlides = presentation.slides || [];
 
   const requests = [];
 
-  // 1. Add a request to delete the default blank slide that is automatically created.
-  if (defaultSlideId) {
-    requests.push({
-      deleteObject: {
-        objectId: defaultSlideId,
-      },
-    });
+  // 1. Only delete the default blank slide if we're NOT in edit mode and there's a default slide
+  if (!isEditMode && existingSlides.length > 0) {
+    const defaultSlideId = existingSlides[0]?.objectId;
+    if (defaultSlideId) {
+      requests.push({
+        deleteObject: {
+          objectId: defaultSlideId,
+        },
+      });
+    }
   }
 
   // 2. Loop through the slides data and build all requests in the correct order.
@@ -257,6 +338,80 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken) {
 
   console.log("✅ All slides created successfully in one batch!");
   return { success: true };
+}
+
+// Helper function to clear all slides from a Google Presentation (except the first slide which we'll recreate)
+async function clearGoogleSlidesItems(presentationId, accessToken) {
+  try {
+    // Get the presentation to find all slide IDs
+    const presentation = await getGoogleSlidesStructure(presentationId, accessToken);
+    const slides = presentation.slides || [];
+
+    if (slides.length === 0) return;
+
+    const requests = [];
+
+    // Delete all slides
+    slides.forEach((slide) => {
+      requests.push({
+        deleteObject: {
+          objectId: slide.objectId,
+        },
+      });
+    });
+
+    if (requests.length > 0) {
+      const res = await fetch(
+        `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ requests }),
+        }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        console.warn("Failed to clear slides:", error.error?.message);
+      }
+    }
+  } catch (error) {
+    console.warn("Error clearing slides:", error.message);
+  }
+}
+
+// Helper function to update Google Slides title
+async function updateGoogleSlidesTitle(presentationId, newTitle, accessToken) {
+  const res = await fetch(
+    `https://slides.googleapis.com/v1/presentations/${presentationId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            updatePresentationProperties: {
+              properties: {
+                title: newTitle,
+              },
+              fields: "title",
+            },
+          },
+        ],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    console.warn("Failed to update presentation title:", error.error?.message);
+  }
 }
 
 // Converts JSON schema to Google Forms API format
@@ -557,6 +712,96 @@ async function updateGoogleSheetsData(spreadsheetId, sheetsData, accessToken) {
   return await res.json();
 }
 
+// Helper function to clear all data from Google Sheets
+async function clearGoogleSheetsData(spreadsheetId, accessToken) {
+  // Get the spreadsheet to retrieve sheet information
+  const getRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!getRes.ok) {
+    console.warn("Could not fetch spreadsheet structure for clearing");
+    return;
+  }
+
+  const spreadsheetInfo = await getRes.json();
+  const sheets = spreadsheetInfo.sheets || [];
+
+  const requests = [];
+
+  // Clear all content from each sheet
+  sheets.forEach((sheet) => {
+    const sheetId = sheet.properties.sheetId;
+    
+    // Clear all cells in the sheet
+    requests.push({
+      updateCells: {
+        range: {
+          sheetId: sheetId,
+        },
+        fields: "userEnteredValue",
+      },
+    });
+  });
+
+  if (requests.length > 0) {
+    const res = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ requests }),
+      }
+    );
+
+    if (!res.ok) {
+      const error = await res.json();
+      console.warn("Failed to clear sheets data:", error.error?.message);
+    }
+  }
+}
+
+// Helper function to update Google Sheets title
+async function updateGoogleSheetsTitle(spreadsheetId, newTitle, accessToken) {
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        requests: [
+          {
+            updateSpreadsheetProperties: {
+              properties: {
+                title: newTitle,
+              },
+              fields: "title",
+            },
+          },
+        ],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const error = await res.json();
+    console.warn("Failed to update spreadsheet title:", error.error?.message);
+  }
+}
+
 // Converts JSON schema to Google Sheets API format
 function convertSchemaToGoogleSheets(schema) {
   if (!schema.sheets || !Array.isArray(schema.sheets)) {
@@ -596,7 +841,7 @@ function convertSchemaToGoogleSheets(schema) {
 }
 
 // Sidebar Component
-const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
+const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange, onNewChat }) => {
   // Placeholder chat history data
   const chatHistory = [
     { id: 1, title: "Untitled Form", type: "form", timestamp: "2024-01-15" },
@@ -611,7 +856,7 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
 
   const typeOptions = [
     { id: 'form', label: 'Forms', icon: '📋' },
-    { id: 'ppt', label: 'PPT', icon: '📊' },
+    { id: 'ppt', label: 'Presentations', icon: '📊' },
     { id: 'spreadsheet', label: 'Spreadsheets', icon: '📈' }
   ];
 
@@ -630,7 +875,10 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
         <div className="flex flex-col h-full">
           {/* Top Section: New Chat & Type Selection */}
           <div className="p-4 border-b border-gray-700/50">
-            <button className="w-full mb-4 p-3 bg-purple-600 rounded-lg font-semibold text-white transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/30">
+            <button 
+              onClick={onNewChat}
+              className="w-full mb-4 p-3 bg-purple-600 rounded-lg font-semibold text-white transition-all duration-300 ease-out relative group overflow-hidden transform hover:scale-[1.02] hover:shadow-lg hover:shadow-purple-500/30"
+            >
               <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
               <span className="relative flex items-center justify-center gap-2">
                 <span>➕</span>
@@ -698,10 +946,25 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
 };
 
 // ChatConversation Component
-const ChatConversation = ({ messages }) => {
+const ChatConversation = ({ messages, currentSchema, selectedType }) => {
   return (
     <div className="flex-1 p-2 md:p-6 overflow-auto m-4 md:m-10">
       <div className="max-w-4xl mx-auto space-y-4">
+        {/* Edit Mode Indicator - Shows above messages when in edit mode */}
+        {messages.length > 0 && currentSchema !== null && (
+          <div className="p-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 rounded-lg backdrop-blur-sm mb-4 animate-fade-in-up">
+            <div className="flex items-center gap-3 text-blue-300">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-500/20 rounded-full">
+                <span className="text-lg">✏️</span>
+              </div>
+              <div>
+                <div className="font-semibold text-sm">Edit Mode Active</div>
+                <div className="text-xs text-blue-400">Make changes to your {selectedType} below</div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {messages.length === 0 && (
           <div className="text-center text-gray-400 animate-fade-in-up">
             <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
@@ -756,17 +1019,32 @@ const ChatConversation = ({ messages }) => {
 };
 
 // ChatInputBox Component
-const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, selectedType }) => {
+const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, selectedType, isEditing }) => {
   const getPlaceholder = () => {
-    switch (selectedType) {
-      case 'form':
-        return 'Describe the form you want to create...';
-      case 'ppt':
-        return 'Describe the presentation you want to create...';
-      case 'spreadsheet':
-        return 'Describe the spreadsheet you want to create...';
-      default:
-        return 'Type your request here...';
+    if (isEditing) {
+      // Editing mode placeholders
+      switch (selectedType) {
+        case 'form':
+          return 'Edit the form (e.g., "Change the title to..." or "Add a new field for...")';
+        case 'ppt':
+          return 'Edit the presentation (e.g., "Change slide 2 title" or "Add a new slide about...")';
+        case 'spreadsheet':
+          return 'Edit the spreadsheet (e.g., "Change the title" or "Add a new column for...")';
+        default:
+          return 'Edit your document...';
+      }
+    } else {
+      // Creation mode placeholders
+      switch (selectedType) {
+        case 'form':
+          return 'Describe the form you want to create...';
+        case 'ppt':
+          return 'Describe the presentation you want to create...';
+        case 'spreadsheet':
+          return 'Describe the spreadsheet you want to create...';
+        default:
+          return 'Type your request here...';
+      }
     }
   };
 
@@ -810,6 +1088,43 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, select
 
 // PreviewPanel Component that shows iframe of Google Form or Slides
 const PreviewPanel = ({ schema, isLoading, selectedType }) => {
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Function to get the public link based on document type
+  const getPublicLink = () => {
+    if (schema?.googleFormId) {
+      return `https://docs.google.com/forms/d/${schema.googleFormId}/viewform`;
+    } else if (schema?.googleSlidesId) {
+      return `https://docs.google.com/presentation/d/${schema.googleSlidesId}/edit#slide=id.p`;
+    } else if (schema?.googleSheetsId) {
+      return `https://docs.google.com/spreadsheets/d/${schema.googleSheetsId}/edit#gid=0`;
+    }
+    return null;
+  };
+
+  // Function to handle export (copy link to clipboard)
+  const handleExport = async () => {
+    const link = getPublicLink();
+    if (!link) return;
+
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }
+  };
+
   return (
     <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
       <div className="relative flex justify-center items-center mb-6">
@@ -817,22 +1132,29 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
           {selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}
         </h2>
         <div className="absolute right-0 top-1/2 -translate-y-1/2 flex gap-2">
-          <button
+          {/* <button
             className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
             disabled={!schema}
+            onClick={() => {
+              const link = getPublicLink();
+              if (link) window.open(link, '_blank');
+            }}
           >
             <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
             <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
               <span className="transform transition-transform duration-300 group-hover:translate-x-1">Edit</span>
             </span>
-          </button>
+          </button> */}
           <button
             className="px-4 py-2 bg-purple-600 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={!schema}
+            onClick={handleExport}
           >
             <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
             <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
-              <span className="transform transition-transform duration-300 group-hover:translate-x-1">Export</span>
+              <span className="transform transition-transform duration-300 group-hover:translate-x-1">
+                {copySuccess ? '✓ Copied!' : 'Export'}
+              </span>
             </span>
           </button>
         </div>
@@ -896,6 +1218,8 @@ export default function ChatPage() {
   const [accessToken, setAccessToken] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedType, setSelectedType] = useState('form');
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [currentSchema, setCurrentSchema] = useState(null); // Store the current raw schema for context
 
   const handleLogin = (token) => {
     setAccessToken(token);
@@ -912,6 +1236,8 @@ export default function ChatPage() {
     setAccessToken(null);
     setSchema(null);
     setMessages([]);
+    setConversationHistory([]);
+    setCurrentSchema(null);
   };
 
   const toggleSidebar = () => {
@@ -928,21 +1254,67 @@ export default function ChatPage() {
         setSchema(null);      // <-- THE MAIN FIX: Reset the preview content
         setMessages([]);      // Optional but recommended: Clear the chat history
         setChatInput("");     // Optional but recommended: Clear the input field
+        setConversationHistory([]); // Clear conversation history
+        setCurrentSchema(null); // Clear current schema
     }
+  };
+
+  // Function to start a new chat - resets all context
+  const handleNewChat = () => {
+    setMessages([]);
+    setChatInput("");
+    setConversationHistory([]);
+    setCurrentSchema(null);
+    setSchema(null);
+    setError(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!chatInput.trim() || isLoading) return;
 
-    setMessages((prev) => [...prev, { type: "user", content: chatInput }]);
+    const userMessage = { type: "user", content: chatInput };
+    setMessages((prev) => [...prev, userMessage]);
+    
+    // Add to conversation history for context
+    const newConversationEntry = { 
+      role: "user", 
+      content: chatInput,
+      timestamp: new Date().toISOString()
+    };
+    setConversationHistory(prev => [...prev, newConversationEntry]);
+
     setIsLoading(true);
     setError(null);
-    setSchema(null); // Clear previous schema before generating a new one
 
     try {
-      const response = await generateSchema(chatInput, selectedType);
+      // Prepare context for the LLM
+      const contextData = {
+        conversationHistory: [...conversationHistory, newConversationEntry],
+        currentSchema: currentSchema,
+        isEditing: messages.length > 0 && currentSchema !== null, // Check if we're in edit mode
+        selectedType: selectedType
+      };
+
+      console.log('🔄 Sending context to LLM:', {
+        isEditing: contextData.isEditing,
+        historyLength: contextData.conversationHistory.length,
+        hasCurrentSchema: !!contextData.currentSchema
+      });
+
+      const response = await generateSchema(chatInput, selectedType, contextData);
       const rawSchema = response.schema;
+
+      // Store the current schema for future edits
+      setCurrentSchema(rawSchema);
+
+      // Add AI response to conversation history
+      const aiConversationEntry = {
+        role: "assistant",
+        content: `Generated ${selectedType} successfully!`,
+        timestamp: response.timestamp
+      };
+      setConversationHistory(prev => [...prev, aiConversationEntry]);
 
       if (selectedType === 'form') {
         const googleFormPayload = convertSchemaToGoogleForm(rawSchema);
@@ -951,22 +1323,45 @@ export default function ChatPage() {
           throw new Error("Google access token is missing. Please login again.");
         }
 
-        // Create form with title only
-        const formResult = await createGoogleForm(googleFormPayload, accessToken);
-
-        // Add questions/items with batchUpdate
-        await updateGoogleFormItems(
-          formResult.formId,
-          googleFormPayload.items,
-          accessToken
-        );
+        let formResult;
+        
+        if (contextData.isEditing && schema?.googleFormId) {
+          // EDIT MODE: Update existing form
+          console.log('🔄 Editing mode: Updating existing form with ID:', schema.googleFormId);
+          
+          // Clear existing items first, then add new ones
+          await clearGoogleFormItems(schema.googleFormId, accessToken);
+          await updateGoogleFormItems(
+            schema.googleFormId,
+            googleFormPayload.items,
+            accessToken
+          );
+          
+          // Update form title if it changed
+          await updateGoogleFormTitle(schema.googleFormId, googleFormPayload.info.title, accessToken);
+          
+          formResult = { formId: schema.googleFormId }; // Keep the same ID
+        } else {
+          // CREATE MODE: Create new form
+          console.log('🆕 Creation mode: Creating new form');
+          formResult = await createGoogleForm(googleFormPayload, accessToken);
+          
+          // Add questions/items with batchUpdate
+          await updateGoogleFormItems(
+            formResult.formId,
+            googleFormPayload.items,
+            accessToken
+          );
+        }
 
         setSchema({ googleFormId: formResult.formId });
         setMessages((prev) => [
           ...prev,
           {
             type: "ai",
-            content: `Generated form successfully!`,
+            content: contextData.isEditing ? 
+              `Updated form successfully!` : 
+              `Generated form successfully!`,
             timestamp: response.timestamp,
           },
         ]);
@@ -979,24 +1374,47 @@ export default function ChatPage() {
           throw new Error("Google access token is missing. Please login again.");
         }
 
-        // Create presentation with title only
-        const slidesResult = await createGoogleSlides(googleSlidesPayload, accessToken);
+        let slidesResult;
 
-        console.log('📊 Created presentation:', slidesResult.presentationId);
-
-        // Add slides with batchUpdate
-        await updateGoogleSlidesItems(
-          slidesResult.presentationId,
-          googleSlidesPayload.slides,
-          accessToken
-        );
+        if (contextData.isEditing && schema?.googleSlidesId) {
+          // EDIT MODE: Update existing presentation
+          console.log('🔄 Editing mode: Updating existing presentation with ID:', schema.googleSlidesId);
+          
+          // Clear existing slides first, then add new ones
+          await clearGoogleSlidesItems(schema.googleSlidesId, accessToken);
+          await updateGoogleSlidesItems(
+            schema.googleSlidesId,
+            googleSlidesPayload.slides,
+            accessToken,
+            true // Pass isEditMode = true
+          );
+          
+          // Update presentation title if it changed
+          await updateGoogleSlidesTitle(schema.googleSlidesId, googleSlidesPayload.title, accessToken);
+          
+          slidesResult = { presentationId: schema.googleSlidesId }; // Keep the same ID
+        } else {
+          // CREATE MODE: Create new presentation
+          console.log('🆕 Creation mode: Creating new presentation');
+          slidesResult = await createGoogleSlides(googleSlidesPayload, accessToken);
+          
+          // Add slides with batchUpdate
+          await updateGoogleSlidesItems(
+            slidesResult.presentationId,
+            googleSlidesPayload.slides,
+            accessToken,
+            false // Pass isEditMode = false
+          );
+        }
 
         setSchema({ googleSlidesId: slidesResult.presentationId });
         setMessages((prev) => [
           ...prev,
           {
             type: "ai",
-            content: `Generated presentation successfully!`,
+            content: contextData.isEditing ? 
+              `Updated presentation successfully!` : 
+              `Generated presentation successfully!`,
             timestamp: response.timestamp,
           },
         ]);
@@ -1009,24 +1427,45 @@ export default function ChatPage() {
           throw new Error("Google access token is missing. Please login again.");
         }
 
-        // Create spreadsheet with title and sheets structure
-        const sheetsResult = await createGoogleSheets(googleSheetsPayload, accessToken);
+        let sheetsResult;
 
-        console.log('📈 Created spreadsheet:', sheetsResult.spreadsheetId);
-
-        // Add data with batchUpdate
-        await updateGoogleSheetsData(
-          sheetsResult.spreadsheetId,
-          googleSheetsPayload.sheets,
-          accessToken
-        );
+        if (contextData.isEditing && schema?.googleSheetsId) {
+          // EDIT MODE: Update existing spreadsheet
+          console.log('🔄 Editing mode: Updating existing spreadsheet with ID:', schema.googleSheetsId);
+          
+          // Clear existing sheets data first, then add new data
+          await clearGoogleSheetsData(schema.googleSheetsId, accessToken);
+          await updateGoogleSheetsData(
+            schema.googleSheetsId,
+            googleSheetsPayload.sheets,
+            accessToken
+          );
+          
+          // Update spreadsheet title if it changed
+          await updateGoogleSheetsTitle(schema.googleSheetsId, googleSheetsPayload.title, accessToken);
+          
+          sheetsResult = { spreadsheetId: schema.googleSheetsId }; // Keep the same ID
+        } else {
+          // CREATE MODE: Create new spreadsheet
+          console.log('🆕 Creation mode: Creating new spreadsheet');
+          sheetsResult = await createGoogleSheets(googleSheetsPayload, accessToken);
+          
+          // Add data with batchUpdate
+          await updateGoogleSheetsData(
+            sheetsResult.spreadsheetId,
+            googleSheetsPayload.sheets,
+            accessToken
+          );
+        }
 
         setSchema({ googleSheetsId: sheetsResult.spreadsheetId });
         setMessages((prev) => [
           ...prev,
           {
             type: "ai",
-            content: `Generated spreadsheet successfully!`,
+            content: contextData.isEditing ? 
+              `Updated spreadsheet successfully!` : 
+              `Generated spreadsheet successfully!`,
             timestamp: response.timestamp,
           },
         ]);
@@ -1037,7 +1476,9 @@ export default function ChatPage() {
           ...prev,
           {
             type: "ai",
-            content: `Generated ${selectedType} successfully!`,
+            content: contextData.isEditing ? 
+              `Updated ${selectedType} successfully!` : 
+              `Generated ${selectedType} successfully!`,
             timestamp: response.timestamp,
           },
         ]);
@@ -1048,6 +1489,14 @@ export default function ChatPage() {
         ...prev,
         { type: "ai", content: `Error: ${err.message}`, isError: true },
       ]);
+      
+      // Add error to conversation history as well
+      setConversationHistory(prev => [...prev, {
+        role: "assistant",
+        content: `Error: ${err.message}`,
+        timestamp: new Date().toISOString(),
+        isError: true
+      }]);
     } finally {
       setIsLoading(false);
       setChatInput("");
@@ -1078,6 +1527,7 @@ export default function ChatPage() {
         onToggle={toggleSidebar}
         selectedType={selectedType}
         onTypeChange={handleTypeChange} // --- CHANGED LINE ---
+        onNewChat={handleNewChat} // --- NEW LINE ---
       />
 
       {/* Error notification */}
@@ -1137,13 +1587,14 @@ export default function ChatPage() {
           <PreviewPanel schema={schema} isLoading={isLoading} selectedType={selectedType} />
         </div>
         <div className="w-full lg:w-[30%] flex flex-col min-w-0">
-          <ChatConversation messages={messages} />
+          <ChatConversation messages={messages} currentSchema={currentSchema} selectedType={selectedType} />
           <ChatInputBox
             chatInput={chatInput}
             setChatInput={setChatInput}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
             selectedType={selectedType}
+            isEditing={messages.length > 0 && currentSchema !== null}
           />
         </div>
       </div>

@@ -454,7 +454,7 @@ async function updateGoogleSheetsData(spreadsheetId, sheetsData, accessToken) {
     const sheetId = actualSheetIds[sheetIndex];
 
     if (!sheetId && sheetId !== 0) {
-      console.warn(`⚠️  No sheet ID found for index ${sheetIndex}`);
+      console.warn(`⚠️  No sheet ID found for index ${sheetIndex}`);
       return;
     }
 
@@ -620,12 +620,12 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
       {/* Sidebar Navigation */}
       <div
         className={`
-         fixed top-0 left-0 z-40 w-64 h-full 
-         bg-gray-800/95 backdrop-blur-md 
-         border-r border-gray-700/50
-         transition-transform duration-300 ease-in-out
-         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-       `}
+          fixed top-0 left-0 z-40 w-64 h-full 
+          bg-gray-800/95 backdrop-blur-md 
+          border-r border-gray-700/50
+          transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
       >
         <div className="flex flex-col h-full">
           {/* Top Section: New Chat & Type Selection */}
@@ -698,62 +698,61 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange }) => {
 };
 
 // ChatConversation Component
-// ChatConversation Component
 const ChatConversation = ({ messages }) => {
-  return (
-    <div className="flex-1 p-2 md:p-6 overflow-auto m-4 md:m-10">
-      <div className="max-w-4xl mx-auto space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-gray-400 animate-fade-in-up">
-            <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
-            <p className="text-xl mb-2">Start a conversation!</p>
-            <p className="text-sm">
-              Describe what kind of form, presentation, or spreadsheet you need
-            </p>
-          </div>
-        )}
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${message.type === "user"
-                ? "bg-purple-600/90 ml-auto max-w-md shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
-                : message.isError
-                  ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
-                  : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
-              }`}
-            style={{
-              animationDelay: `${index * 0.1}s`,
-              animationFillMode: "backwards",
-            }}
-          >
-            <div className="relative">
-              {message.type === "user" ? (
-                <div className="absolute -right-2 -top-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-sm animate-fade-in">
-                  👤
-                </div>
-              ) : (
-                <div
-                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${message.isError ? "bg-red-700" : "bg-gray-700"
-                    }`}
-                >
-                  {message.isError ? "❌" : "🤖"}
-                </div>
-              )}
-                  {/* The fix is in the line below */}
-              <div className="mt-1 pl-8"> {/* <-- FIX: Added pl-8 for spacing */}
-                {message.content}
-                {message.timestamp && (
-                  <div className="text-xs text-gray-400 mt-2">
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return (
+    <div className="flex-1 p-2 md:p-6 overflow-auto m-4 md:m-10">
+      <div className="max-w-4xl mx-auto space-y-4">
+        {messages.length === 0 && (
+          <div className="text-center text-gray-400 animate-fade-in-up">
+            <div className="text-6xl mb-4 animate-bounce-slow">💬</div>
+            <p className="text-xl mb-2">Start a conversation!</p>
+            <p className="text-sm">
+              Describe what kind of form, presentation, or spreadsheet you need
+            </p>
+          </div>
+        )}
+        {messages.map((message, index) => (
+          <div
+            key={index}
+            className={`p-4 rounded-lg backdrop-blur-sm animate-fade-in-side transform transition-all duration-300 hover:scale-[1.02] ${message.type === "user"
+                ? "bg-purple-600/90 ml-auto max-w-md shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+                : message.isError
+                  ? "bg-red-800/90 mr-auto max-w-md border border-red-700/50 shadow-lg shadow-red-500/10 hover:shadow-red-500/20"
+                  : "bg-gray-800/90 mr-auto max-w-md border border-gray-700/50 shadow-lg shadow-purple-500/10 hover:shadow-purple-500/20"
+              }`}
+            style={{
+              animationDelay: `${index * 0.1}s`,
+              animationFillMode: "backwards",
+            }}
+          >
+            <div className="relative">
+              {message.type === "user" ? (
+                <div className="absolute -right-2 -top-2 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-sm animate-fade-in">
+                  👤
+                </div>
+              ) : (
+                <div
+                  className={`absolute -left-2 -top-2 w-6 h-6 rounded-full flex items-center justify-center text-sm animate-fade-in ${message.isError ? "bg-red-700" : "bg-gray-700"
+                    }`}
+                >
+                  {message.isError ? "❌" : "🤖"}
+                </div>
+              )}
+              {/* The fix is in the line below */}
+              <div className="mt-1 pl-8"> {/* <-- FIX: Added pl-8 for spacing */}
+                {message.content}
+                {message.timestamp && (
+                  <div className="text-xs text-gray-400 mt-2">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 // ChatInputBox Component
@@ -813,9 +812,11 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, select
 const PreviewPanel = ({ schema, isLoading, selectedType }) => {
   return (
     <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">{selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}</h2>
-        <div className="flex gap-2">
+      <div className="relative flex justify-center items-center mb-6">
+        <h2 className="text-2xl font-bold text-center">
+          {selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}
+        </h2>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 flex gap-2">
           <button
             className="px-4 py-2 bg-gray-700/50 rounded-lg font-semibold transition-all duration-500 ease-out hover:shadow-lg hover:shadow-purple-500/30 relative group overflow-hidden transform hover:bg-gray-700/70"
             disabled={!schema}
@@ -846,7 +847,7 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
           </div>
         ) : schema?.googleFormId ? (
           <iframe
-            src={`https://docs.google.com/forms/d/${schema.googleFormId}/viewform`}
+            src={`https://docs.google.com/forms/d/${schema.googleFormId}/viewform?embedded=true`}
             width="100%"
             height="100%"
             className="rounded-lg border-none"
@@ -917,6 +918,18 @@ export default function ChatPage() {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
+  // --- ADDED FUNCTION ---
+  // This function now handles changing the tool type.
+  // It resets the preview and chat to provide a clean state for the new tool.
+  const handleTypeChange = (newType) => {
+    // Only run if the type is actually changing to avoid unnecessary resets
+    if (newType !== selectedType) {
+        setSelectedType(newType);
+        setSchema(null);      // <-- THE MAIN FIX: Reset the preview content
+        setMessages([]);      // Optional but recommended: Clear the chat history
+        setChatInput("");     // Optional but recommended: Clear the input field
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -925,6 +938,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, { type: "user", content: chatInput }]);
     setIsLoading(true);
     setError(null);
+    setSchema(null); // Clear previous schema before generating a new one
 
     try {
       const response = await generateSchema(chatInput, selectedType);
@@ -1063,7 +1077,7 @@ export default function ChatPage() {
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
         selectedType={selectedType}
-        onTypeChange={setSelectedType}
+        onTypeChange={handleTypeChange} // --- CHANGED LINE ---
       />
 
       {/* Error notification */}

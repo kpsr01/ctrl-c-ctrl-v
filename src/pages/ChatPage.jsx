@@ -1153,7 +1153,7 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
             <span className="absolute inset-0 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></span>
             <span className="relative inline-flex items-center transition-transform duration-300 group-hover:scale-110">
               <span className="transform transition-transform duration-300 group-hover:translate-x-1">
-                {copySuccess ? '✓ Copied!' : 'Export'}
+                {copySuccess ? '✓ Copied!' : 'Share'}
               </span>
             </span>
           </button>

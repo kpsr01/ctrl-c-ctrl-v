@@ -39,7 +39,7 @@ export default function LandingPage() {
           </span>
         </h1>
         <p className={`description-text ${show ? 'show' : 'hide'}`}>
-          Natural language to fully structured forms – fast, simple, powerful.
+          Natural language to fully structured documents – fast, simple, powerful.
         </p>
         <div className="button-container">
           <GradientOutlineButton onClick={() => navigate('/chat')} />
@@ -47,13 +47,13 @@ export default function LandingPage() {
       </div>
       <div className={`features-grid ${show ? 'show' : 'hide'}`}>
           <div>
-            <FeatureCard emoji="⚡" title="Speed" description="Lightning fast form generation" />
+            <FeatureCard emoji="⚡" title="Speed" description="Generate documents in lightning speed" />
           </div>
           <div>
-            <FeatureCard emoji="🎯" title="Accuracy" description="Smart field suggestions based on context" />
+            <FeatureCard emoji="🎯" title="Accuracy" description="Ask what you want and let AI do it for you" />
           </div>
           <div>
-            <FeatureCard emoji="📤" title="Export" description="Export to Microsoft Forms and Google Docs" />
+            <FeatureCard emoji="📤" title="Share" description="Share your documents effortlessly" />
           </div>
       </div>
     </div>

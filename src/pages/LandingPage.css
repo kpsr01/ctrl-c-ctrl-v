@@ -322,7 +322,7 @@
 @media (min-width: 640px) {
   .description-text {
     font-size: 1.5rem;
-    margin-bottom: 5rem;
+    margin-bottom: 2rem;
   }
 }
 
@@ -364,7 +364,6 @@
 
 @media (min-width: 640px) {
   .features-grid {
-    margin-top: 4rem;
     gap: 2rem;
     padding: 0 1rem;
   }

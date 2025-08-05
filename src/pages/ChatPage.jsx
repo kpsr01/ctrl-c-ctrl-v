@@ -1197,7 +1197,7 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
             <div className="text-6xl mb-4">
               {selectedType === 'form' ? '📋' : selectedType === 'ppt' ? '📊' : '📈'}
             </div>
-            <p className="text-xl mb-2">Generated {selectedType} will appear here</p>
+            <p className="text-xl mb-2">Generated {selectedType === 'form' ? 'form' : selectedType === 'ppt' ? 'presentation' : 'spreadsheet'} will appear here</p>
             <p className="text-sm">
               Start by describing the {selectedType} you want to create
             </p>

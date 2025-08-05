@@ -31,7 +31,7 @@ const openRouterClient = axios.create({
 /**
  * Generate system prompt based on content type
  */
-function getSystemPrompt(type) {
+function getSystemPrompt(type, theme = null) {
   const basePrompt = `You are an expert at creating and editing JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
 
 IMPORTANT RULES:
@@ -141,13 +141,13 @@ Example output for "Job Application Form":
 }`;
 
     case 'presentation':
-      return `${basePrompt}
+      let presentationPrompt = `${basePrompt}
 
 For PRESENTATIONS, create a JSON schema with:
 - "type": "presentation"
 - "title": presentation title
 - "slides": array of slide objects
-- Each slide should have: title, subtitle (optional), content (array of bullet points), layout
+- Each slide should have: title, subtitle (optional), content (array of bullet points), layout, colors (object), fonts (object)
 
 Valid layout options: BLANK, TITLE, TITLE_AND_BODY, TITLE_AND_TWO_COLUMNS, TITLE_ONLY, SECTION_HEADER, ONE_COLUMN_TEXT, MAIN_POINT
 
@@ -156,59 +156,104 @@ IMPORTANT: Make sure to include meaningful content for each slide with:
 - Relevant subtitles where appropriate  
 - Content as an array of bullet points (3-5 points per slide)
 - Always include at least 3-5 slides for a complete presentation
+- Colors and fonts that match the requested theme
+- Rich visual styling based on theme`;
 
-Example output for "Marketing Strategy":
+      // Add theme-specific styling instructions
+      if (theme) {
+        presentationPrompt += `
+
+THEME: ${theme.toUpperCase()}
+You must creatively design the visual styling for the "${theme}" theme. You have complete freedom to choose appropriate:
+
+COLORS - Design a cohesive color palette with:
+- "primary": main brand color (hex format like "#2563eb")  
+- "secondary": supporting color for subtitles and accents
+- "accent": highlight color for important elements
+- "background": slide background color
+- "text": main text color
+
+FONTS - Choose typography that matches the theme:
+- "heading": font family for titles (e.g., "Arial Black", "Times New Roman", "Impact", "Georgia", "Helvetica Neue", "Comic Sans MS")
+- "body": font family for content and subtitles
+- "size": object with "title" (28-40px), "subtitle" (20-30px), "content" (14-24px) font sizes
+
+STYLE GUIDELINES:
+- Professional: Corporate, clean, minimal, business-appropriate
+- Creative: Bold, artistic, vibrant, experimental, colorful  
+- Academic: Scholarly, formal, research-oriented, traditional
+- Modern: Sleek, contemporary, trendy, tech-forward
+- Elegant: Sophisticated, luxurious, refined, premium
+- Playful: Fun, engaging, colorful, casual, energetic
+
+IMPORTANT: Include these styling properties in EVERY slide:
+"colors": { your chosen color palette },
+"fonts": { your chosen typography settings }
+
+Make creative decisions that truly capture the essence of the "${theme}" theme!`;
+      }
+
+      presentationPrompt += `
+
+Example output for "Marketing Strategy" (showing how you should creatively choose theme styling):
 {
   "type": "presentation",
   "title": "Marketing Strategy 2024",
+  "theme": "professional",
   "slides": [
     {
       "title": "Marketing Strategy 2024",
       "subtitle": "Driving Brand Growth Through Digital Innovation",
-      "layout": "TITLE"
+      "layout": "TITLE",
+      "colors": {
+        "primary": "#your_chosen_primary_color",
+        "secondary": "#your_chosen_secondary_color", 
+        "accent": "#your_chosen_accent_color",
+        "background": "#your_chosen_background_color",
+        "text": "#your_chosen_text_color"
+      },
+      "fonts": {
+        "heading": "Your_Chosen_Heading_Font",
+        "body": "Your_Chosen_Body_Font",
+        "size": {
+          "title": your_chosen_title_size,
+          "subtitle": your_chosen_subtitle_size,
+          "content": your_chosen_content_size
+        }
+      }
     },
     {
-      "title": "Current Market Analysis",
+      "title": "Current Market Analysis", 
       "content": [
         "Digital marketing spend increased 25% year-over-year",
         "Social media engagement drives 40% of new customer acquisition",
         "Mobile-first approach is now essential for reach",
         "Video content generates 3x more engagement than static posts"
       ],
-      "layout": "TITLE_AND_BODY"
-    },
-    {
-      "title": "Target Audience Insights",
-      "content": [
-        "Primary demographic: 25-45 years old professionals",
-        "Active on LinkedIn, Instagram, and YouTube platforms",
-        "Value authentic brand storytelling and transparency",
-        "Prefer personalized content and experiences"
-      ],
-      "layout": "TITLE_AND_BODY"
-    },
-    {
-      "title": "Key Marketing Channels",
-      "content": [
-        "Social Media Marketing: Focus on video and interactive content",
-        "Email Campaigns: Personalized nurture sequences",
-        "Content Marketing: Educational blogs and case studies",
-        "Paid Advertising: Targeted LinkedIn and Google Ads"
-      ],
-      "layout": "TITLE_AND_BODY"
-    },
-    {
-      "title": "Success Metrics & Goals",
-      "content": [
-        "Increase brand awareness by 30% in next 6 months",
-        "Generate 500 qualified leads per month",
-        "Improve customer engagement rate to 8%",
-        "Achieve 25% conversion rate from leads to customers"
-      ],
-      "layout": "TITLE_AND_BODY"
+      "layout": "TITLE_AND_BODY",
+      "colors": {
+        "primary": "#same_primary_color_as_above",
+        "secondary": "#same_secondary_color_as_above",
+        "accent": "#same_accent_color_as_above", 
+        "background": "#same_background_color_as_above",
+        "text": "#same_text_color_as_above"
+      },
+      "fonts": {
+        "heading": "Same_Heading_Font_As_Above",
+        "body": "Same_Body_Font_As_Above",
+        "size": {
+          "title": same_title_size_as_above,
+          "subtitle": same_subtitle_size_as_above,
+          "content": same_content_size_as_above
+        }
+      }
     }
   ]
-}`;
+}
+
+REMEMBER: Replace the placeholder values with your creative choices that match the theme!`;
+
+      return presentationPrompt;
 
     case 'spreadsheet':
       return `${basePrompt}
@@ -282,9 +327,11 @@ export async function generateFormSchema(prompt, type = 'form', context = null) 
     };
     
     const mappedType = typeMapping[type] || type;
-    console.log(`🤖 Generating ${mappedType} schema for type: ${type}`);
+    const theme = context?.theme;
     
-    const systemPrompt = getSystemPrompt(mappedType);
+    console.log(`🤖 Generating ${mappedType} schema for type: ${type}${theme ? ` with theme: ${theme}` : ''}`);
+    
+    const systemPrompt = getSystemPrompt(mappedType, theme);
     
     // Build user prompt based on whether we're editing or creating new
     let userPrompt;

@@ -178,8 +178,8 @@ async function getGoogleSlidesStructure(presentationId, accessToken) {
   return await res.json();
 }
 
-// *** THIS IS THE CORRECTED AND OPTIMIZED FUNCTION ***
-// Calls Google Slides API batchUpdate to add all slides and content in one call
+// *** ENHANCED FUNCTION WITH THEME SUPPORT ***
+// Calls Google Slides API batchUpdate to add all slides and content with theme styling
 async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEditMode = false) {
   if (!slides || slides.length === 0) return;
 
@@ -201,22 +201,51 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
     }
   }
 
-  // 2. Loop through the slides data and build all requests in the correct order.
+  // 2. Loop through the slides data and build all requests with theme styling
   slides.forEach((slide, i) => {
-    const slideId = `slide_${i + 1}`; // e.g., slide_1, slide_2
+    const slideId = `slide_${i + 1}`;
+    const colors = slide.colors || {
+      primary: '#2563eb',
+      secondary: '#64748b', 
+      accent: '#1e40af',
+      background: '#f8fafc',
+      text: '#1e293b'
+    };
+    const fonts = slide.fonts || {
+      heading: 'Arial Black',
+      body: 'Arial',
+      size: { title: 32, subtitle: 24, content: 18 }
+    };
 
-    // Request to create the new slide
+    // Request to create the new slide with background color
     requests.push({
       createSlide: {
         objectId: slideId,
-        insertionIndex: i, // Add slides in order
+        insertionIndex: i,
         slideLayoutReference: {
           predefinedLayout: slide.layout || "TITLE_AND_BODY",
         },
       },
     });
 
-    // Requests for the title
+    // Set slide background color
+    requests.push({
+      updatePageProperties: {
+        objectId: slideId,
+        pageProperties: {
+          pageBackgroundFill: {
+            solidFill: {
+              color: {
+                rgbColor: hexToRgb(colors.background)
+              }
+            }
+          }
+        },
+        fields: "pageBackgroundFill"
+      }
+    });
+
+    // Requests for the title with theme styling
     if (slide.title) {
       const titleId = `${slideId}_title`;
       requests.push({
@@ -226,8 +255,8 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
           elementProperties: {
             pageObjectId: slideId,
             size: {
-              height: { magnitude: 50, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" },
+              height: { magnitude: 60, unit: "PT" },
+              width: { magnitude: 650, unit: "PT" },
             },
             transform: {
               scaleX: 1, scaleY: 1, translateX: 50, translateY: 50, unit: "PT",
@@ -243,14 +272,20 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
           objectId: titleId,
           style: {
             bold: true,
-            fontSize: { magnitude: 24, unit: "PT" },
+            fontSize: { magnitude: fonts.size.title, unit: "PT" },
+            foregroundColor: {
+              opaqueColor: {
+                rgbColor: hexToRgb(colors.primary)
+              }
+            },
+            fontFamily: fonts.heading,
           },
-          fields: "bold,fontSize",
+          fields: "bold,fontSize,foregroundColor,fontFamily",
         },
       });
     }
 
-    // Requests for the subtitle
+    // Requests for the subtitle with theme styling
     if (slide.subtitle) {
       const subtitleId = `${slideId}_subtitle`;
       requests.push({
@@ -260,11 +295,11 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
           elementProperties: {
             pageObjectId: slideId,
             size: {
-              height: { magnitude: 30, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" },
+              height: { magnitude: 40, unit: "PT" },
+              width: { magnitude: 650, unit: "PT" },
             },
             transform: {
-              scaleX: 1, scaleY: 1, translateX: 50, translateY: 120, unit: "PT",
+              scaleX: 1, scaleY: 1, translateX: 50, translateY: 130, unit: "PT",
             },
           },
         },
@@ -275,13 +310,22 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
       requests.push({
         updateTextStyle: {
           objectId: subtitleId,
-          style: { fontSize: { magnitude: 18, unit: "PT" }, italic: true },
-          fields: "fontSize,italic",
+          style: { 
+            fontSize: { magnitude: fonts.size.subtitle, unit: "PT" }, 
+            italic: true,
+            foregroundColor: {
+              opaqueColor: {
+                rgbColor: hexToRgb(colors.secondary)
+              }
+            },
+            fontFamily: fonts.body,
+          },
+          fields: "fontSize,italic,foregroundColor,fontFamily",
         },
       });
     }
 
-    // Requests for the main content
+    // Requests for the main content with theme styling
     if (slide.content && Array.isArray(slide.content) && slide.content.length > 0) {
       const contentId = `${slideId}_content`;
       const contentText = slide.content.map(item => `• ${item}`).join('\n');
@@ -292,11 +336,11 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
           elementProperties: {
             pageObjectId: slideId,
             size: {
-              height: { magnitude: 300, unit: "PT" },
-              width: { magnitude: 600, unit: "PT" },
+              height: { magnitude: 350, unit: "PT" },
+              width: { magnitude: 650, unit: "PT" },
             },
             transform: {
-              scaleX: 1, scaleY: 1, translateX: 50, translateY: slide.subtitle ? 170 : 120, unit: "PT",
+              scaleX: 1, scaleY: 1, translateX: 50, translateY: slide.subtitle ? 190 : 140, unit: "PT",
             },
           },
         },
@@ -307,12 +351,20 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
       requests.push({
         updateTextStyle: {
           objectId: contentId,
-          style: { fontSize: { magnitude: 14, unit: "PT" } },
-          fields: "fontSize",
+          style: { 
+            fontSize: { magnitude: fonts.size.content, unit: "PT" },
+            foregroundColor: {
+              opaqueColor: {
+                rgbColor: hexToRgb(colors.text)
+              }
+            },
+            fontFamily: fonts.body,
+          },
+          fields: "fontSize,foregroundColor,fontFamily",
         },
       });
     }
-    console.log(`✅ Queued up requests for slide ${i + 1}: ${slide.title}`);
+    console.log(`✅ Queued up themed requests for slide ${i + 1}: ${slide.title}`);
   });
 
   // 3. Execute all requests in a single API call
@@ -336,8 +388,18 @@ async function updateGoogleSlidesItems(presentationId, slides, accessToken, isEd
     }
   }
 
-  console.log("✅ All slides created successfully in one batch!");
+  console.log("✅ All themed slides created successfully in one batch!");
   return { success: true };
+}
+
+// Helper function to convert hex color to RGB for Google Slides API
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    red: parseInt(result[1], 16) / 255,
+    green: parseInt(result[2], 16) / 255,
+    blue: parseInt(result[3], 16) / 255
+  } : { red: 0, green: 0, blue: 0 };
 }
 
 // Helper function to clear all slides from a Google Presentation (except the first slide which we'll recreate)
@@ -482,7 +544,7 @@ function convertSchemaToGoogleForm(schema) {
   };
 }
 
-// Converts JSON schema to Google Slides API format
+// Converts JSON schema to Google Slides API format with theme support
 function convertSchemaToGoogleSlides(schema) {
   // Valid Google Slides predefined layouts
   const getValidLayout = (layout) => {
@@ -514,13 +576,28 @@ function convertSchemaToGoogleSlides(schema) {
   };
 
   if (!schema.slides || !Array.isArray(schema.slides)) {
-    // Enhanced fallback: create slides based on schema content
+    // Enhanced fallback: create slides based on schema content with default theme
     const title = schema.title || "Generated Presentation";
+    const defaultColors = {
+      primary: '#2563eb',
+      secondary: '#64748b',
+      accent: '#1e40af',
+      background: '#f8fafc',
+      text: '#1e293b'
+    };
+    const defaultFonts = {
+      heading: 'Arial Black',
+      body: 'Arial',
+      size: { title: 32, subtitle: 24, content: 18 }
+    };
+
     const fallbackSlides = [
       {
         title: title,
         subtitle: "AI Generated Presentation",
         layout: "TITLE",
+        colors: defaultColors,
+        fonts: defaultFonts,
       },
       {
         title: "Overview",
@@ -531,22 +608,38 @@ function convertSchemaToGoogleSlides(schema) {
           "Each slide follows best practices for presentation design"
         ],
         layout: "TITLE_AND_BODY",
+        colors: defaultColors,
+        fonts: defaultFonts,
       }
     ];
 
     return {
       title: title,
+      theme: schema.theme || 'professional',
       slides: fallbackSlides,
     };
   }
 
   return {
     title: schema.title || "Generated Presentation",
+    theme: schema.theme || 'professional',
     slides: schema.slides.map((slide) => ({
       title: slide.title || "Slide Title",
       subtitle: slide.subtitle || null,
       content: slide.content || [],
       layout: getValidLayout(slide.layout),
+      colors: slide.colors || {
+        primary: '#2563eb',
+        secondary: '#64748b',
+        accent: '#1e40af',
+        background: '#f8fafc',
+        text: '#1e293b'
+      },
+      fonts: slide.fonts || {
+        heading: 'Arial Black',
+        body: 'Arial',
+        size: { title: 32, subtitle: 24, content: 18 }
+      },
     })),
   };
 }
@@ -1020,6 +1113,17 @@ const ChatConversation = ({ messages, currentSchema, selectedType }) => {
 
 // ChatInputBox Component
 const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, selectedType, isEditing }) => {
+  const [selectedTheme, setSelectedTheme] = useState('professional');
+
+  const presentationThemes = [
+    { id: 'professional', label: 'Professional', icon: '💼', description: 'Clean, corporate, minimal design' },
+    { id: 'creative', label: 'Creative', icon: '🎨', description: 'Colorful, bold, artistic design' },
+    { id: 'academic', label: 'Academic', icon: '🎓', description: 'Scholarly, research-focused design' },
+    { id: 'modern', label: 'Modern', icon: '✨', description: 'Sleek, contemporary, trendy design' },
+    { id: 'elegant', label: 'Elegant', icon: '💎', description: 'Sophisticated, refined, luxurious design' },
+    { id: 'playful', label: 'Playful', icon: '🎉', description: 'Fun, vibrant, engaging design' }
+  ];
+
   const getPlaceholder = () => {
     if (isEditing) {
       // Editing mode placeholders
@@ -1039,7 +1143,7 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, select
         case 'form':
           return 'Describe the form you want to create...';
         case 'ppt':
-          return 'Describe the presentation you want to create...';
+          return `Describe the ${selectedTheme} presentation you want to create...`;
         case 'spreadsheet':
           return 'Describe the spreadsheet you want to create...';
         default:
@@ -1048,10 +1152,62 @@ const ChatInputBox = ({ chatInput, setChatInput, handleSubmit, isLoading, select
     }
   };
 
+  const handleThemeSubmit = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isLoading) return;
+
+    // For presentations, include theme in the request
+    if (selectedType === 'ppt') {
+      const themeInfo = presentationThemes.find(theme => theme.id === selectedTheme);
+      const enhancedInput = `Create a ${selectedTheme} themed presentation: ${chatInput}. Style: ${themeInfo?.description}`;
+      handleSubmit(e, enhancedInput, selectedTheme);
+    } else {
+      handleSubmit(e, chatInput);
+    }
+  };
+
   return (
     <div className="p-2 md:p-6 bg-gray-800/90 backdrop-blur-md border-t border-gray-700/50">
+      {/* Theme Selector for Presentations */}
+      {selectedType === 'ppt' && (
+        <div className="max-w-4xl mx-auto mb-4">
+          <label className="block text-sm font-medium text-gray-300 mb-3">
+            <span className="flex items-center gap-2">
+              🎨 <span>Presentation Theme</span>
+            </span>
+          </label>
+          {/* Horizontal Scrollable Theme Menu */}
+          <div className="relative">
+            <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 p-5">
+              {presentationThemes.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  onClick={() => setSelectedTheme(theme.id)}
+                  className={`theme-selector flex-shrink-0 p-2 rounded-lg border transition-colors duration-200 min-w-[90px] ${
+                    selectedTheme === theme.id
+                      ? 'selected border-purple-500 bg-purple-600/20 text-purple-300 shadow-lg shadow-purple-500/30'
+                      : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500 hover:bg-gray-700/70'
+                  }`}
+                  title={theme.description}
+                >
+                  <div className="text-xl mb-1">{theme.icon}</div>
+                  <div className="text-xs font-medium whitespace-nowrap">{theme.label}</div>
+                </button>
+              ))}
+            </div>
+            {/* Scroll indicators */}
+            <div className="absolute left-0 top-0 bottom-0 w-4 bg-gradient-to-r from-gray-800 to-transparent pointer-events-none"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-gray-800 to-transparent pointer-events-none"></div>
+          </div>
+          <div className="mt-3 text-xs text-gray-400 text-center">
+            Selected: <span className="text-purple-300 font-medium">{presentationThemes.find(t => t.id === selectedTheme)?.description}</span>
+          </div>
+        </div>
+      )}
+      
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleThemeSubmit}
         className="max-w-4xl mx-auto flex items-center relative"
       >
         <div className="relative w-full">
@@ -1130,6 +1286,11 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
       <div className="relative flex justify-center items-center mb-6">
         <h2 className="text-2xl font-bold text-center">
           {selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}
+          {selectedType === 'ppt' && schema?.theme && (
+            <span className="block text-sm font-normal text-gray-400 mt-1">
+              Theme: {schema.theme.charAt(0).toUpperCase() + schema.theme.slice(1)}
+            </span>
+          )}
         </h2>
         <div className="absolute right-0 top-1/2 -translate-y-1/2 flex gap-2">
           {/* <button
@@ -1269,18 +1430,20 @@ export default function ChatPage() {
     setError(null);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, enhancedInput = null, theme = null) => {
     e.preventDefault();
-    if (!chatInput.trim() || isLoading) return;
+    const inputText = enhancedInput || chatInput;
+    if (!inputText.trim() || isLoading) return;
 
-    const userMessage = { type: "user", content: chatInput };
+    const userMessage = { type: "user", content: chatInput }; // Show original user input in chat
     setMessages((prev) => [...prev, userMessage]);
     
     // Add to conversation history for context
     const newConversationEntry = { 
       role: "user", 
-      content: chatInput,
-      timestamp: new Date().toISOString()
+      content: inputText, // Use enhanced input for AI processing
+      timestamp: new Date().toISOString(),
+      theme: theme // Include theme information
     };
     setConversationHistory(prev => [...prev, newConversationEntry]);
 
@@ -1293,16 +1456,18 @@ export default function ChatPage() {
         conversationHistory: [...conversationHistory, newConversationEntry],
         currentSchema: currentSchema,
         isEditing: messages.length > 0 && currentSchema !== null, // Check if we're in edit mode
-        selectedType: selectedType
+        selectedType: selectedType,
+        theme: theme // Pass theme to backend
       };
 
       console.log('🔄 Sending context to LLM:', {
         isEditing: contextData.isEditing,
         historyLength: contextData.conversationHistory.length,
-        hasCurrentSchema: !!contextData.currentSchema
+        hasCurrentSchema: !!contextData.currentSchema,
+        theme: theme
       });
 
-      const response = await generateSchema(chatInput, selectedType, contextData);
+      const response = await generateSchema(inputText, selectedType, contextData);
       const rawSchema = response.schema;
 
       // Store the current schema for future edits

@@ -49,6 +49,71 @@
   animation: pulse-slow 2s ease-in-out infinite;
 }
 
+/* Theme Selector Styles */
+.theme-selector {
+  transition: all 0.3s ease;
+}
+
+.theme-selector:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+}
+
+.theme-selector.selected {
+  box-shadow: 0 0 0 2px #8b5cf6, 0 4px 20px rgba(139, 92, 246, 0.4);
+  transform: scale(1.05);
+}
+
+@keyframes theme-pulse {
+  0%, 100% { transform: scale(1.05); }
+  50% { transform: scale(1.08); }
+}
+
+.theme-selector.selected {
+  animation: theme-pulse 2s ease-in-out infinite;
+}
+
+/* Custom Scrollbar for Theme Selector */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 6px;
+}
+
+.scrollbar-track-gray-800::-webkit-scrollbar-track {
+  background-color: #1f2937;
+  border-radius: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #1f2937;
+  border-radius: 6px;
+}
+
+/* Smooth scrolling */
+.theme-selector:focus {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
+
+/* Enhanced hover effects for scrollable menu */
+.theme-selector:hover:not(.selected) {
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.3), rgba(75, 85, 99, 0.5));
+  border-color: #9ca3af;
+}
+
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-25%) rotate(-12deg); }

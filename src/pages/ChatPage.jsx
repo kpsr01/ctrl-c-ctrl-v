@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import "./ChatPage.css";
 import { generateSchema } from "../services/apiService";
 import GoogleLoginButton from "../components/ui/GoogleLoginButton";
@@ -958,7 +958,7 @@ const Sidebar = ({ isOpen, onToggle, selectedType, onTypeChange, onNewChat }) =>
       {/* Sidebar Navigation */}
       <div
         className={`
-          fixed top-0 left-0 z-40 w-64 h-full 
+          fixed top-0 left-0 z-40 w-64 h-full pt-16
           bg-gray-800/95 backdrop-blur-md 
           border-r border-gray-700/50
           transition-transform duration-300 ease-in-out
@@ -1282,7 +1282,7 @@ const PreviewPanel = ({ schema, isLoading, selectedType }) => {
   };
 
   return (
-    <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out">
+    <div className="w-full h-full bg-gray-800/50 backdrop-blur-md p-2 md:p-6 border-l border-gray-700/50 transition-all duration-300 ease-in-out pt-4">
       <div className="relative flex justify-center items-center mb-6">
         <h2 className="text-2xl font-bold text-center">
           {selectedType === 'form' ? 'Form Preview' : selectedType === 'ppt' ? 'Presentation Preview' : selectedType === 'spreadsheet' ? 'Spreadsheet Preview' : 'Preview'}
@@ -1677,78 +1677,28 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-gray-900 text-white relative overflow-hidden">
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 -z-10 animate-gradient bg-gradient-to-br from-purple-900 via-gray-900 to-red-900 opacity-40">
-        {/* Floating orbs */}
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 rounded-full blur-xl animate-float-slow"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 bg-red-500/20 rounded-full blur-xl animate-float-medium"></div>
-        <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-pink-500/20 rounded-full blur-xl animate-float-fast"></div>
-      </div>
-
-      {/* Sidebar */}
+    <div className="h-screen w-screen flex flex-col bg-gray-900 text-white relative overflow-hidden">
+      {/* Nav Bar */}
+      <nav className="w-full z-50 flex items-center justify-between px-8 py-3 bg-gray-900/70 backdrop-blur-md border-b border-gray-800 fixed top-0 left-0 translucent-navbar">
+        <div className="flex items-center">
+          <span className="text-xl font-bold select-none">
+            <span className="text-purple-400">AI</span> <span className="text-white">Assistant</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          {user && <PinkUserToggle user={user} onLogout={handleLogout} />}
+        </div>
+      </nav>
+      {/* Main Content Area (Sidebar + Main) */}
       <Sidebar
         isOpen={isSidebarOpen}
         onToggle={toggleSidebar}
         selectedType={selectedType}
-        onTypeChange={handleTypeChange} // --- CHANGED LINE ---
-        onNewChat={handleNewChat} // --- NEW LINE ---
+        onTypeChange={handleTypeChange}
+        onNewChat={handleNewChat}
       />
-
-      {/* Error notification */}
-
-      {error && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">
-          <div className="flex items-center gap-2">
-            <span>❌</span>
-            <span>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              className="ml-2 hover:text-gray-200"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-      {/* Top bar controls */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-4">
-        {user && (
-          <>
-            <img
-              src={user.picture}
-              alt="User"
-              className="w-8 h-8 rounded-full"
-            />
-            <span className="text-sm">{user.email}</span>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1 bg-red-600 rounded hover:bg-red-700 text-white"
-            >
-              Logout
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Toggle Sidebar Button */}
-      <button
-        onClick={toggleSidebar}
-        className={`fixed top-6 z-50 p-2 bg-gray-800/90 backdrop-blur-md rounded-lg border border-gray-700/50 hover:bg-gray-700/90 transition-all duration-300 ease-out transform hover:scale-110 shadow-lg ${isSidebarOpen ? 'left-64 lg:left-64' : 'left-4'
-          }`}
-        style={{ transition: 'left 0.3s' }}
-      >
-        <span className="text-white text-lg">
-          {isSidebarOpen ? '◀' : '▶'}
-        </span>
-      </button>
-
-      {/* Main Content Area */}
-      <div className={`flex flex-col lg:flex-row w-full h-full gap-4 lg:gap-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-        }`}>
-        {/* Left Side - Preview Panel (70%) */}
-
-        <div className="w-full lg:w-[70%]">
+      <div className={`flex flex-col lg:flex-row flex-1 h-full transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-64' : ''} pt-16`}>
+        <div className="w-full lg:w-[70%] flex flex-col">
           <PreviewPanel schema={schema} isLoading={isLoading} selectedType={selectedType} />
         </div>
         <div className="w-full lg:w-[30%] flex flex-col min-w-0">
@@ -1763,6 +1713,78 @@ export default function ChatPage() {
           />
         </div>
       </div>
+      {/* Error notification */}
+      {error && (
+        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg">
+          <div className="flex items-center gap-2">
+            <span>❌</span>
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-2 hover:text-gray-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Top bar controls (now handled by nav bar) */}
+      {/* Toggle Sidebar Button */}
+      <button
+        onClick={toggleSidebar}
+        className={`fixed top-20 z-50 p-2 bg-gray-800/90 backdrop-blur-md rounded-lg border border-gray-700/50 hover:bg-gray-700/90 transition-all duration-300 ease-out transform hover:scale-110 shadow-lg ${isSidebarOpen ? 'left-64 lg:left-64' : 'left-4'}`}
+        style={{ transition: 'left 0.3s' }}
+      >
+        <span className="text-white text-lg">
+          {isSidebarOpen ? '◀' : '▶'}
+        </span>
+      </button>
+    </div>
+  );
+}
+
+function PinkUserToggle({ user, onLogout }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-indigo-500 to-purple-700 hover:from-purple-600 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-300 flex items-center justify-center transition-transform hover:scale-105 border-2 border-transparent"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="User menu"
+      >
+        {/* No icon, just a purple gradient round button */}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-56 bg-gray-900/70 border border-gray-700 rounded-lg shadow-lg z-50 animate-fade-in flex flex-col items-center py-4 backdrop-blur-md">
+          <span className="text-sm text-white font-semibold truncate max-w-[200px] mb-2" title={user.email}>{user.email}</span>
+          <button
+            className="mt-2 px-4 py-2 bg-gray-800/60 hover:bg-gray-700/70 rounded text-white w-32 transition-colors backdrop-blur-sm border border-gray-700"
+            onClick={() => {/* settings logic here */}}
+          >
+            Settings
+          </button>
+          <button
+            onClick={onLogout}
+            className="mt-2 px-4 py-2 bg-red-900/60 hover:bg-red-800/80 rounded text-white w-32 transition-colors backdrop-blur-sm border border-red-800"
+          >
+            Logout
+          </button>
+        </div>
+      )}
     </div>
   );
 }

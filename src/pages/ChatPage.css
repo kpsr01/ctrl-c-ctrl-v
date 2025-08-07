@@ -214,3 +214,9 @@
   outline: none;
   box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
 }
+
+.translucent-navbar {
+  box-shadow: 0 2px 24px 0 rgba(80, 80, 120, 0.18), 0 1.5px 0 0 rgba(139,92,246,0.08);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}

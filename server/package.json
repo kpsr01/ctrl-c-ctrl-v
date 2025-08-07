@@ -9,6 +9,7 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@rjsf/core": "^5.24.12",
     "axios": "^1.6.0",
     "cors": "^2.8.5",

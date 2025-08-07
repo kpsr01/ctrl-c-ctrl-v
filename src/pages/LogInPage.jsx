@@ -10,7 +10,7 @@ export default function LoginPage() {
       window.google.accounts.id.initialize({
         client_id: "YOUR_CLIENT_ID_HERE", // Replace with your Google client ID
         callback: (response) => {
-          console.log("Google Sign-In response:", response);
+          // console.log("Google Sign-In response:", response);
           setIdToken(response.credential);
         },
       });

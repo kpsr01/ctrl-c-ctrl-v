@@ -1682,7 +1682,7 @@ export default function ChatPage() {
       <nav className="w-full z-50 flex items-center justify-between px-8 py-3 bg-gray-900/70 backdrop-blur-md border-b border-gray-800 fixed top-0 left-0 translucent-navbar">
         <div className="flex items-center">
           <span className="text-xl font-bold select-none">
-            <span className="text-purple-400">AI</span> <span className="text-white">Assistant</span>
+            <span className="text-purple-400">Presto</span> <span className="text-white">AI</span>
           </span>
         </div>
         <div className="flex items-center gap-4">

@@ -79,7 +79,19 @@ your-project/
 
 ## Testing Locally
 
-### Test the API functions locally:
+### Run the server and client locally:
+```bash
+cd server/ 
+npm run start
+``` 
+This will start the Express server locally. 
+
+### Run the React app locally:
+```bash 
+npm run dev
+```
+
+### Test the API functions locally using vercel dev
 ```bash
 vercel dev
 ```

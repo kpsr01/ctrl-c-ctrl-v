@@ -1,38 +1,4 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-const OPENROUTER_API_URL = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1';
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL_NAME = 'meta-llama/llama-3.3-70b-instruct:free';
-
-if (!OPENROUTER_API_KEY) {
-  console.error('⚠️  OPENROUTER_API_KEY not found in environment variables');
-}
-
-// Create axios instance for OpenRouter
-const openRouterClient = axios.create({
-  baseURL: OPENROUTER_API_URL,
-  headers: {
-    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-    'HTTP-Referer': 'http://localhost:5173',
-    'X-Title': 'Ctrl-C-Ctrl-V Form Generator'
-  },
-  timeout: 30000 // 30 second timeout
-});
-
-/**
- * Generate system prompt based on content type
- */
-function getSystemPrompt(type, theme = null) {
-  const basePrompt = `You are an expert at creating and editing JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
+const BASE_PROMPT = `You are an expert at creating and editing JSON schemas for forms, presentations, and spreadsheets. Your task is to convert natural language descriptions into valid JSON schemas that can be used to generate the requested content.
 
 IMPORTANT RULES:
 1. Always return ONLY valid JSON - no markdown, no explanations, no additional text
@@ -49,9 +15,10 @@ EDITING BEHAVIOR:
 - Maintain the same structure and format as the existing schema
 - If adding new elements, follow the same patterns as existing elements`;
 
-  switch (type) {
-    case 'form':
-      return `${basePrompt}
+/**
+ * Form-specific prompt template
+ */
+const FORM_PROMPT = `${BASE_PROMPT}
 
 For FORMS, create a JSON schema with:
 - "type": "object"
@@ -140,8 +107,11 @@ Example output for "Job Application Form":
   }
 }`;
 
-    case 'presentation':
-      let presentationPrompt = `${basePrompt}
+/**
+ * Presentation-specific prompt template
+ */
+const PRESENTATION_PROMPT = (theme = null) => {
+	let prompt = `${BASE_PROMPT}
 
 For PRESENTATIONS, create a JSON schema with:
 - "type": "presentation"
@@ -159,9 +129,8 @@ IMPORTANT: Make sure to include meaningful content for each slide with:
 - Colors and fonts that match the requested theme
 - Rich visual styling based on theme`;
 
-      // Add theme-specific styling instructions
-      if (theme) {
-        presentationPrompt += `
+	if (theme) {
+		prompt += `
 
 THEME: ${theme.toUpperCase()}
 You must creatively design the visual styling for the "${theme}" theme. You have complete freedom to choose appropriate:
@@ -191,9 +160,9 @@ IMPORTANT: Include these styling properties in EVERY slide:
 "fonts": { your chosen typography settings }
 
 Make creative decisions that truly capture the essence of the "${theme}" theme!`;
-      }
+	}
 
-      presentationPrompt += `
+	prompt += `
 
 Example output for "Marketing Strategy" (showing how you should creatively choose theme styling):
 {
@@ -253,10 +222,13 @@ Example output for "Marketing Strategy" (showing how you should creatively choos
 
 REMEMBER: Replace the placeholder values with your creative choices that match the theme!`;
 
-      return presentationPrompt;
+	return prompt;
+};
 
-    case 'spreadsheet':
-      return `${basePrompt}
+/**
+ * Spreadsheet-specific prompt template
+ */
+const SPREADSHEET_PROMPT = `${BASE_PROMPT}
 
 For SPREADSHEETS, create a JSON schema with:
 - "type": "spreadsheet"
@@ -309,58 +281,31 @@ Example output for "Budget Tracker":
   ]
 }`;
 
-    default:
-      return basePrompt;
-  }
+/**
+ * Get system prompt based on content type
+ */
+export function getSystemPrompt(type, theme = null) {
+	switch (type) {
+		case "form":
+			return FORM_PROMPT;
+		case "presentation":
+			return PRESENTATION_PROMPT(theme);
+		case "spreadsheet":
+			return SPREADSHEET_PROMPT;
+		default:
+			return BASE_PROMPT;
+	}
 }
 
 /**
- * Generate form schema using OpenRouter LLM
+ * Build user prompt for creation or editing
  */
-export async function generateFormSchema(prompt, type = 'form', context = null) {
-  try {
-    // Map frontend types to backend types
-    const typeMapping = {
-      'ppt': 'presentation',
-      'form': 'form',
-      'spreadsheet': 'spreadsheet'
-    };
-    
-    const mappedType = typeMapping[type] || type;
-    const theme = context?.theme;
-    
-    console.log(`🤖 Generating ${mappedType} schema for type: ${type}${theme ? ` with theme: ${theme}` : ''}`);
-    
-    const systemPrompt = getSystemPrompt(mappedType, theme);
-    
-    // Build user prompt based on whether we're editing or creating new
-    let userPrompt;
-    const messages = [
-      {
-        role: 'system',
-        content: systemPrompt
-      }
-    ];
+export function buildUserPrompt(prompt, type, context) {
+	const mappedType = mapType(type);
 
-    if (context && context.isEditing && context.currentSchema) {
-      // EDITING MODE: Include conversation history and current schema
-      console.log('🔄 Edit mode: Including context and schema');
-      
-      // Add conversation history to messages
-      if (context.conversationHistory && context.conversationHistory.length > 0) {
-        // Add the previous conversation messages (excluding the current one)
-        const previousMessages = context.conversationHistory.slice(0, -1);
-        previousMessages.forEach(msg => {
-          if (msg.role === 'user' || msg.role === 'assistant') {
-            messages.push({
-              role: msg.role,
-              content: msg.content
-            });
-          }
-        });
-      }
-
-      userPrompt = `EDIT MODE: Based on our previous conversation and the current ${mappedType} schema below, please make the requested changes.
+	if (context && context.isEditing && context.currentSchema) {
+		// EDITING MODE
+		return `EDIT MODE: Based on our previous conversation and the current ${mappedType} schema below, please make the requested changes.
 
 CURRENT SCHEMA:
 ${JSON.stringify(context.currentSchema, null, 2)}
@@ -370,106 +315,23 @@ USER REQUEST: ${prompt}
 Please return the updated schema with the requested modifications. Maintain the existing structure and only change what the user specifically requested.
 
 Remember: Return ONLY valid JSON, no additional text or formatting.`;
-    } else {
-      // CREATION MODE: Fresh start
-      console.log('🆕 Creation mode: Fresh start');
-      userPrompt = `Create a ${mappedType} based on this description: ${prompt}
+	} else {
+		// CREATION MODE
+		return `Create a ${mappedType} based on this description: ${prompt}
 
 Remember: Return ONLY valid JSON, no additional text or formatting.`;
-    }
-
-    // Add the current user message
-    messages.push({
-      role: 'user',
-      content: userPrompt
-    });
-
-    const response = await openRouterClient.post('/chat/completions', {
-      model: MODEL_NAME,
-      messages: messages,
-      temperature: context && context.isEditing ? 0.1 : 0.3, // Lower temperature for edits to be more conservative
-      max_tokens: 2000,
-      top_p: 0.9,
-      frequency_penalty: 0,
-      presence_penalty: 0
-    });
-
-    const aiResponse = response.data.choices[0]?.message?.content;
-    
-    if (!aiResponse) {
-      throw new Error('No response from LLM');
-    }
-
-    console.log('🔍 Raw LLM Response:', aiResponse);
-
-    // Clean the response - remove markdown formatting if present
-    let cleanedResponse = aiResponse.trim();
-    
-    // Remove markdown code blocks if present
-    if (cleanedResponse.startsWith('```json')) {
-      cleanedResponse = cleanedResponse.replace(/^```json\s*/, '');
-    }
-    if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/^```\s*/, '');
-    }
-    if (cleanedResponse.endsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/\s*```$/, '');
-    }
-
-    // Try to parse the JSON
-    let schema;
-    try {
-      schema = JSON.parse(cleanedResponse);
-    } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError);
-      console.error('🔍 Cleaned Response:', cleanedResponse);
-      
-      // Fallback: Try to extract JSON from the response
-      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        schema = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error(`Failed to parse JSON response: ${parseError.message}`);
-      }
-    }
-
-    // Validate the schema structure
-    if (!schema || typeof schema !== 'object') {
-      throw new Error('Invalid schema structure received from LLM');
-    }
-
-    console.log('✅ Schema generated successfully');
-    return schema;
-
-  } catch (error) {
-    console.error('❌ Error in generateFormSchema:', error);
-    
-    if (error.response) {
-      // OpenRouter API error
-      console.error('API Response Status:', error.response.status);
-      console.error('API Response Data:', error.response.data);
-      throw new Error(`OpenRouter API Error: ${error.response.data?.error?.message || error.response.statusText}`);
-    } else if (error.request) {
-      // Network error
-      console.error('Network Error:', error.message);
-      throw new Error('Failed to connect to OpenRouter API. Please check your internet connection.');
-    } else {
-      // Other error
-      throw new Error(`LLM Service Error: ${error.message}`);
-    }
-  }
+	}
 }
 
 /**
- * Test the LLM connection
+ * Map frontend types to backend types
  */
-export async function testConnection() {
-  try {
-    const response = await openRouterClient.get('/models');
-    console.log('✅ OpenRouter connection successful');
-    return true;
-  } catch (error) {
-    console.error('❌ OpenRouter connection failed:', error.message);
-    return false;
-  }
+function mapType(type) {
+	const typeMapping = {
+		ppt: "presentation",
+		form: "form",
+		spreadsheet: "spreadsheet",
+	};
+
+	return typeMapping[type] || type;
 }

@@ -1,20 +1,14 @@
-import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const OPENROUTER_API_URL = process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1';
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const MODEL_NAME = 'meta-llama/llama-3.3-70b-instruct:free';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const MODEL_NAME = 'gemini-2.5-flash';
 
-// Create axios instance for OpenRouter
-const openRouterClient = axios.create({
-  baseURL: OPENROUTER_API_URL,
-  headers: {
-    'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-    'Content-Type': 'application/json',
-    'HTTP-Referer': 'https://your-app.vercel.app',
-    'X-Title': 'Ctrl-C-Ctrl-V Form Generator'
-  },
-  timeout: 30000 // 30 second timeout
-});
+if (!GEMINI_API_KEY) {
+  console.error('⚠️  GEMINI_API_KEY not found in environment variables');
+}
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 /**
  * Generate system prompt based on content type
@@ -320,26 +314,35 @@ Remember: Return ONLY valid JSON, no additional text or formatting.`;
 Remember: Return ONLY valid JSON, no additional text or formatting.`;
     }
 
-    // Add the current user message
-    messages.push({
-      role: 'user',
-      content: userPrompt
+    // Create a single prompt for Gemini by combining system prompt and user prompt
+    let fullPrompt = systemPrompt + '\n\n' + userPrompt;
+    
+    // If we have conversation history, include it
+    if (context && context.conversationHistory && context.conversationHistory.length > 1) {
+      const historyText = context.conversationHistory.slice(0, -1).map(msg => 
+        `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`
+      ).join('\n');
+      fullPrompt = systemPrompt + '\n\nConversation History:\n' + historyText + '\n\nCurrent Request:\n' + userPrompt;
+    }
+
+    // Get Gemini model and generate content
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    
+    const generationConfig = {
+      temperature: context && context.isEditing ? 0.1 : 0.3,
+      topP: 0.9,
+      maxOutputTokens: 2000,
+    };
+
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+      generationConfig,
     });
 
-    const response = await openRouterClient.post('/chat/completions', {
-      model: MODEL_NAME,
-      messages: messages,
-      temperature: context && context.isEditing ? 0.1 : 0.3, // Lower temperature for edits to be more conservative
-      max_tokens: 2000,
-      top_p: 0.9,
-      frequency_penalty: 0,
-      presence_penalty: 0
-    });
-
-    const aiResponse = response.data.choices[0]?.message?.content;
+    const aiResponse = result.response.text();
     
     if (!aiResponse) {
-      throw new Error('No response from LLM');
+      throw new Error('No response from Gemini');
     }
 
     console.log('🔍 Raw LLM Response:', aiResponse);
@@ -386,18 +389,15 @@ Remember: Return ONLY valid JSON, no additional text or formatting.`;
   } catch (error) {
     console.error('❌ Error in generateFormSchema:', error);
     
-    if (error.response) {
-      // OpenRouter API error
-      console.error('API Response Status:', error.response.status);
-      console.error('API Response Data:', error.response.data);
-      throw new Error(`OpenRouter API Error: ${error.response.data?.error?.message || error.response.statusText}`);
-    } else if (error.request) {
-      // Network error
-      console.error('Network Error:', error.message);
-      throw new Error('Failed to connect to OpenRouter API. Please check your internet connection.');
+    if (error.message && error.message.includes('API_KEY')) {
+      throw new Error('Gemini API key is invalid or missing. Please check your environment variables.');
+    } else if (error.message && error.message.includes('quota')) {
+      throw new Error('Gemini API quota exceeded. Please try again later.');
+    } else if (error.message && error.message.includes('network')) {
+      throw new Error('Failed to connect to Gemini API. Please check your internet connection.');
     } else {
       // Other error
-      throw new Error(`LLM Service Error: ${error.message}`);
+      throw new Error(`Gemini AI Service Error: ${error.message}`);
     }
   }
 }

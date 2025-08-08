@@ -24,8 +24,7 @@ vercel
 Go to your Vercel project dashboard and add these environment variables:
 
 **Required Environment Variables:**
-- `OPENROUTER_API_KEY`: Your OpenRouter API key
-- `OPENROUTER_API_URL`: https://openrouter.ai/api/v1
+- `GEMINI_API_KEY`: Your Google Gemini API key (get from https://makersuite.google.com/app/apikey)
 - `NODE_ENV`: production
 
 ### 3. Redeploy after setting environment variables

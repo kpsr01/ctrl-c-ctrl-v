@@ -13,6 +13,7 @@
     "vercel-build": "vite build"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-slot": "^1.2.3",
     "@react-oauth/google": "^0.12.2",
     "@rjsf/core": "^5.24.12",

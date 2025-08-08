@@ -6,16 +6,6 @@
 
 Ctrl+C Ctrl+V is an intelligent document generation platform that leverages Google's Gemini AI to convert natural language descriptions into fully structured documents. Whether you need forms, presentations, or spreadsheets, simply describe what you want in plain English, and our AI will generate professional-quality documents that seamlessly integrate with Google Workspace. This eliminates the tedious manual work of document creation and enables users to focus on content rather than formatting.
 
-## 🎥 Demo
-
-A comprehensive demo video showcasing the platform's capabilities is included in this repository:
-
-**📁 `UNIHACK copy.mp4`** - *View locally or upload to your preferred video hosting platform*
-
-To view the demo:
-- **Local viewing**: Download the repository and open `demo.mp4` with any video player
-- **Online sharing**: Upload `demo.mp4` to YouTube, Vimeo, or your preferred platform for easy sharing
-
 ## ✨ Features
 
 ### 🤖 AI-Powered Generation
